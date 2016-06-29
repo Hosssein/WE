@@ -497,13 +497,14 @@ void readWordEmbeddingFile(Index *ind)
 {
     //int cc=0;
     cout << "ReadWordEmbeddingFile\n";
-
-    ifstream in("infile_vectors_100D.txt");
     string line;
-    getline(in,line);//first line is statistical
+
+    ifstream in("infile_vectors_100D_Glove.txt");
+    //getline(in,line);//first line is statistical in W2V
+
     while(getline(in,line))
     {
-        // cc++;
+        // c++;
         istringstream iss(line);
 
         string sub;
