@@ -204,7 +204,7 @@ void TFIDFRetMethod::updateTextQuery(TextQueryRep &qryRep, const DocIDSet &relDo
 			info = tList->nextEntry(); 
 			//distFeedbackEst[c][tids[info->termID()]]= log(info->count())*idfV[info->termID()];//totalCount*225;
 			distFeedbackEst[c][tids[info->termID()]]= dr->docTFWeight(info->count())*idfV[info->termID()];//totalCount*225;
-//			distFeedbackEst[c][tids[info->termID()]]= (dr->docTFWeight(info->count())*idfV[info->termID()]);//DF[info->termID()]//(log(1 + info->count()) + 1)*idfV[info->termID()];//totalCount*225;
+            //distFeedbackEst[c][tids[info->termID()]]= (dr->docTFWeight(info->count())*idfV[info->termID()]);//DF[info->termID()]//(log(1 + info->count()) + 1)*idfV[info->termID()];//totalCount*225;
 			//cerr<<DF[info->termID()]<<endl;
 			centroidVector[info->termID()]=1;//*idfV[info->termID()];
 		}

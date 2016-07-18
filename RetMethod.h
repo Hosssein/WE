@@ -883,18 +883,7 @@ public:
         newNonRelRecievedCnt = 0;
         newRelRecievedCnt =0;
     }
-    void setFlags(bool flag)//false->nonRel , true -> Rel
-    {
-        if(flag)
-        {
-            newRelRecieved = true;
-            newRelRecievedCnt++;
-        }else
-        {
-         newNonRelRecieved = true;
-         newNonRelRecievedCnt++;
-        }
-    }
+
 
 protected:
     bool newNonRelRecieved,newRelRecieved;
@@ -934,6 +923,8 @@ protected:
     /// keep a copy to be used at any time
     ScoreFunc *scFunc;
 
+
+
     /// @name query model updating methods (i.e., feedback methods)
     //@{
     /// Mixture model feedback method
@@ -960,7 +951,11 @@ protected:
                            const lemur::api::DocIDSet & relDocs);
 
 
-
+    void computeRelNonRelDist(TextQueryRep &origRep,
+                              const vector<int> relDocs, const vector<int> nonRelDocs, bool isRelevant); //!!!
+    void multiplyMatrix2Vec(vector<vector<double> >m1 ,vector<double> m2,vector<double> &res );
+    void multiplyVec2Vec(vector<double> m1, vector<double> m2, vector<vector<double> >&res );
+    void computeCoefMatrix(vector<double> Vq , vector<double> Vwn , vector<double> Vbwn);
     //@}
 
     RetParameter::DocSmoothParam docParam;
@@ -969,6 +964,16 @@ protected:
     /// Load support file support
     void loadSupportFile();
     const string supportFile;
+
+public:
+    bool *relComputed;
+    bool *nonRelComputed;
+    int W2VecDimSize;
+    double alphaCoef,lambdaCoef,etaCoef,betaCoef;
+    //double **coefMatrix;
+    //vector<vector<double> >coefMatrix(100,vector<double>(100));
+    vector<vector<double> >coefMatrix;
+    vector<double> queryAvgVec;
 };
 
 

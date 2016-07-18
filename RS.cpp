@@ -45,7 +45,10 @@ void MonoKLModel(Index* ind);
 vector<int> queryDocList(Index* ind,TextQueryRep *textQR);
 void readWordEmbeddingFile(Index *);
 void writeDocs2File(Index*);
-
+void showNearerTermInW2V(DocStream *qs,RetMethod *myMethod ,Index *ind);
+bool pairCompare(const std::pair<double, int>& firstElem, const std::pair<double, int>& secondElem);
+void showNearerTerms2QueryVecInW2V(DocStream *qs,RetMethod *myMethod ,Index *ind, int avgOrMax);
+void computeQueryAvgVec(DocStream *qs,RetMethod *myMethod );
 
 extern double startThresholdHM , endThresholdHM , intervalThresholdHM ;
 extern int WHO;// 0--> server , 1-->Mozhdeh, 2-->AP, other-->Hossein
@@ -122,13 +125,12 @@ int main(int argc, char * argv[])
 
     //writeDocs2File(ind);
 
+
     readWordEmbeddingFile(ind);
     loadJudgment();
     computeRSMethods(ind);
 
 }
-
-
 
 void computeRSMethods(Index* ind)
 {
@@ -137,15 +139,18 @@ void computeRSMethods(Index* ind)
     RetMethod *myMethod = new RetMethod(*ind,"",accumulator);
 
 
+    //showNearerTermInW2V(qs,myMethod,ind);
+    //showNearerTerms2QueryVecInW2V(qs,myMethod,ind,1);
+    //return;
+
+
     string outFilename;
     if(DATASET == 0)
-    {
-        outFilename =outputFileNameHM+"_infile_WE";
-    }
+        outFilename =outputFileNameHM+"_infile_WE_W2V";
     else if (DATASET == 1)
-    {
         outFilename =outputFileNameHM+"_ohsu";
-    }
+
+
     ofstream out(outFilename.c_str());
 
 
@@ -160,27 +165,27 @@ void computeRSMethods(Index* ind)
 
 #if UPDTHRMODE == 1
 
-        for(double c1 = 0.01 ; c1<=0.091 ;c1+=0.02)//inc
-        //double c1 = 0.02;
+        //for(double c1 = 0.01 ; c1<=0.091 ;c1+=0.02)//inc
+        double c1 = 0.02;
         {
             myMethod->setC1(c1);
-            for(double c2 = 0.001 ; c2 <= 0.0091 ; c2+=0.002)//dec
-            //double c2 = 0.002;
+            //for(double c2 = 0.001 ; c2 <= 0.0091 ; c2+=0.002)//dec
+            double c2 = 0.002;
             {
                 //myMethod->setThreshold(init_thr);
                 myMethod->setC2(c2);
 
-                for(int numOfShownNonRel =2;numOfShownNonRel< 5;numOfShownNonRel+=1 )
-                //int numOfShownNonRel = 2;
+                //for(int numOfShownNonRel =2;numOfShownNonRel< 5;numOfShownNonRel+=1 )
+                int numOfShownNonRel = 2;
                 {
 
-                    for(int numOfnotShownDoc = 200 ;numOfnotShownDoc <= 401 ; numOfnotShownDoc+=100)
-                    //int numOfnotShownDoc = 200;
+                    //for(int numOfnotShownDoc = 200 ;numOfnotShownDoc <= 401 ; numOfnotShownDoc+=100)
+                    int numOfnotShownDoc = 200;
                     {
                         myMethod->setThreshold(thresh);
 
                         cout<<"c1: "<<c1<<" c2: "<<c2<<" numOfShownNonRel: "<<numOfShownNonRel<<" numOfnotShownDoc: "<<numOfnotShownDoc<<" "<<endl;
-                        resultPath = "Glove"+resultFileNameHM.c_str() +numToStr( myMethod->getThreshold() )+"_c1:"+numToStr(c1)+"_c2:"+numToStr(c2)+"_#showNonRel:"+numToStr(numOfShownNonRel)+"_#notShownDoc:"+numToStr(numOfnotShownDoc)+".res";
+                        resultPath = resultFileNameHM.c_str() +numToStr( myMethod->getThreshold() )+"_c1:"+numToStr(c1)+"_c2:"+numToStr(c2)+"_#showNonRel:"+numToStr(numOfShownNonRel)+"_#notShownDoc:"+numToStr(numOfnotShownDoc)+".resW2V";
 #endif
 
                         //myMethod->setThreshold(thresh);
@@ -190,6 +195,7 @@ void computeRSMethods(Index* ind)
 
                         qs->startDocIteration();
                         TextQuery *q;
+
 
                         ofstream result(resultPath.c_str());
                         ResultFile resultFile(1);
@@ -202,6 +208,8 @@ void computeRSMethods(Index* ind)
                             //myMethod->clearRelNonRelCountFlag();
                             //myMethod->clearPrevDistQuery();
 
+                            computeQueryAvgVec(qs,myMethod);
+
                             myMethod->setThreshold(thresh);
                             double relSumScores =0.0,nonRelSumScores = 0.0;
 
@@ -211,7 +219,7 @@ void computeRSMethods(Index* ind)
                             results.clear();
 
 
-                            Document* d = qs->nextDoc();
+                            Document *d = qs->nextDoc();
                             q = new TextQuery(*d);
                             QueryRep *qr = myMethod->computeQueryRep(*q);
                             cout<<"qid: "<<q->id()<<endl;
@@ -224,12 +232,20 @@ void computeRSMethods(Index* ind)
                                 relDocs = queryRelDocsMap[q->id()];
                             else
                             {
-                                cerr<<"*******relSize**********\n";
+                                cerr<<"*******this query has no rel judg(ignore)**********\n";
                                 continue;
                             }
 
+                            myMethod->relComputed = new bool[relDocs.size()];
+                            for(int ii =0; ii < relDocs.size(); ii++)
+                                myMethod->relComputed[ii]=false;
+
+                            myMethod->nonRelComputed = new bool[relDocs.size()*10];//FIX ME!!!!!!!!!!!!!!!!!!
+                            for(int ii =0; ii < 10*relDocs.size(); ii++)
+                                myMethod->nonRelComputed[ii]=false;
+
                             //for(int docID = 1 ; docID < ind->docCount() ; docID++){ //compute for all doc
-                            vector <int> docids = queryDocList(ind,((TextQueryRep *)(qr)));
+                            vector<int> docids = queryDocList(ind,((TextQueryRep *)(qr)));
 
                             cout<<"reldocsize: "<<relDocs.size()<<endl;
 
@@ -263,12 +279,12 @@ void computeRSMethods(Index* ind)
 
                                     if(results.size() > 200)
                                     {
-                                        cout<<"BREAKKKKKKKKKK\n";
+                                        cout<<"BREAKKKKKKKKKK because of results size > 200\n";
                                         break;
                                     }
 
-
-#if 0//FBMODE
+#if 1//FBMODE
+                                    //if(relJudgDocs.size()==5 )
                                     myMethod->updateProfile(*((TextQueryRep *)(qr)),relJudgDocs , nonRelJudgDocs );
 #endif
 #if UPDTHRMODE == 1
@@ -495,16 +511,16 @@ void writeDocs2File(Index *ind)
 }
 void readWordEmbeddingFile(Index *ind)
 {
-    //int cc=0;
+    int cc=0;
     cout << "ReadWordEmbeddingFile\n";
     string line;
 
-    ifstream in("infile_vectors_100D_Glove.txt");
-    //getline(in,line);//first line is statistical in W2V
+    ifstream in("infile_vectors_100D_W2V.txt");
+    getline(in,line);//first line is statistical in W2V
 
     while(getline(in,line))
     {
-        // c++;
+        cc++;
         istringstream iss(line);
 
         string sub;
@@ -519,40 +535,266 @@ void readWordEmbeddingFile(Index *ind)
         if(termID == 0)//FIX ME!!!!!!!!!!
         {
             cout<<sub<<" ";
-            continue;
+            //continue;
         }
-
-        //cout<<"termID--->"<< termID<<endl<<endl;
         while (iss>>dd)
-        {
-
-            //cout<<dd<<" ";
             wordEmbedding[termID].push_back(dd);
-        }
-        //cout<<endl;
-        // if(cc == 2)
-        //    break;
-
     }
 #if 0
-    cout<<"ReadWordEmbeddingFile END\n";
+
     map<int,vector<double> >::iterator ii;
     for(ii=wordEmbedding.begin() ; ii!= wordEmbedding.end() ; ++ii)
     {
-        cout<<ii->first<<" ";
+        //cout<<"hhhhaahah";
+        // cout<<ii->first<<" ";
         // for(int i = 0 ;i< ii->second.size() ; i++ )
         //    cout<<ii->second[i]<<" ";
         //cout<<endl;
-        cout<<ii->second.size()<<endl;
-        break;
+        cout<<ii->second.size()<<" ";
+        //break;
     }
 #endif
+    cout<<"ReadWordEmbeddingFile END\n";
 }
+
+
+bool pairCompare(const std::pair<double, int>& firstElem, const std::pair<double, int>& secondElem)
+{
+    return firstElem.first < secondElem.first;
+}
+
+void showNearerTerms2QueryVecInW2V(DocStream *qs,RetMethod *myMethod ,Index *ind, int avgOrMax)
+{
+    ofstream inputfile;
+    inputfile.open("termsNearer2QueryWordsMaximum.txt");
+
+    qs->startDocIteration();
+    TextQuery *q;
+    while(qs->hasMore())//queries
+    {
+        Document* d = qs->nextDoc();
+        q = new TextQuery(*d);
+        QueryRep *qr = myMethod->computeQueryRep(*q);
+        TextQueryRep *textQR = (TextQueryRep *)(qr);
+
+        //cout<<wordEmbedding.size()<<" "<<ind->termCountUnique()<<endl;
+
+
+
+        vector<vector<double> > queryTerms;
+        double counter =0 ;
+        textQR->startIteration();
+        while(textQR->hasMore())
+        {
+
+            counter += 1;
+            QueryTerm *qt = textQR->nextTerm();
+            if(wordEmbedding.find(qt->id()) != wordEmbedding.end())
+            {
+                queryTerms.push_back(wordEmbedding[qt->id()]);
+            }
+            else
+            {
+                delete qt;
+                continue;
+            }
+
+            inputfile<<ind->term(qt->id())<<" ";
+            delete qt;
+        }
+
+        inputfile<<" : ";
+        vector<double> queryAvg( myMethod->W2VecDimSize);//FIXME!!!!!!!!!!!!!!!!!!!!!!
+
+        if(avgOrMax == 0)
+        {
+            for(int i =0 ; i< queryTerms.size() ; i++)
+            {
+                for(int j = 0 ;j<queryTerms[i].size() ; j++)
+                    queryAvg[j] += queryTerms[i][j];
+            }
+            for(int i = 0 ; i < queryAvg.size() ;i++)
+                queryAvg[i] /= counter;
+        }else if (avgOrMax == 1)
+        {
+            for(int i =0 ; i< queryTerms.size() ; i++)
+            {
+                for(int j = 0 ;j<queryTerms[i].size() ; j++)
+                {
+                    if(queryAvg[j] < queryTerms[i][j])
+                        queryAvg[j] = queryTerms[i][j];
+                }
+            }
+
+        }
+
+
+        vector<double>dtemp;
+        vector<pair<double,int> >simTermid;
+        for(int i = 1 ; i < ind->termCountUnique() ; i++)
+        {
+            if(wordEmbedding.find(i) != wordEmbedding.end())
+                dtemp = wordEmbedding[i];
+            else
+                continue;
+
+
+            double sim = myMethod->cosineSim(queryAvg,dtemp);
+            simTermid.push_back(pair<double,int>(sim,i));
+        }
+        std::sort(simTermid.begin() , simTermid.end(),pairCompare);
+
+        for(int i=simTermid.size()-1 ; i> simTermid.size()- 10 ;i--)//FIX ME!!!!!!!!!!!!!!!!!!!
+            inputfile <<"( "<< ind->term(simTermid[i].second)<<" , "<<simTermid[i].first<<" ) ";
+
+        inputfile<<endl;
+        simTermid.clear();dtemp.clear();queryAvg.clear();
+
+
+        delete textQR;
+        delete q;
+    }
+
+    //delete qr;
+    //delete d;
+
+    inputfile<<endl;
+    inputfile.close();
+
+}
+
+void computeQueryAvgVec(DocStream *qs,RetMethod *myMethod )
+{
+    cout<<"111111111111111\n";
+    qs->startDocIteration();
+    TextQuery *q;
+    while(qs->hasMore())//queries
+    {
+        cout<<"22222222222222222\n";
+        Document* d = qs->nextDoc();
+        q = new TextQuery(*d);
+        QueryRep *qr = myMethod->computeQueryRep(*q);
+        TextQueryRep *textQR = (TextQueryRep *)(qr);
+
+        vector<vector<double> > queryTerms;
+        double counter =0 ;
+        textQR->startIteration();
+        while(textQR->hasMore())
+        {
+            cout<<"4444444444444\n";
+
+            counter += 1;
+            QueryTerm *qt = textQR->nextTerm();
+            if(wordEmbedding.find(qt->id()) != wordEmbedding.end())
+                queryTerms.push_back(wordEmbedding[qt->id()]);
+            else
+            {
+                delete qt;
+                continue;
+            }
+            delete qt;
+        }
+        vector<double> queryAvg( myMethod->W2VecDimSize);
+        for(int i = 0 ; i< queryTerms.size() ; i++)
+        {
+            cout<<"33333333333\n";
+            for(int j = 0 ; j < queryTerms[i].size() ; j++)
+                queryAvg[j] += queryTerms[i][j];
+        }
+        for(int i = 0 ; i < queryAvg.size() ;i++)
+            queryAvg[i] /= counter;
+
+        cout<<"5555555555\n";
+        myMethod->queryAvgVec.clear();
+        myMethod->queryAvgVec = queryAvg;
+        cout<<"5555555555\n";
+
+    }
+}
+
+void showNearerTermInW2V(DocStream *qs,RetMethod *myMethod ,Index *ind)
+{
+    ofstream inputfile;
+    inputfile.open("similar2QueryWord.txt");
+
+
+
+    qs->startDocIteration();
+    TextQuery *q;
+    while(qs->hasMore())//queries
+    {
+        Document* d = qs->nextDoc();
+        q = new TextQuery(*d);
+        QueryRep *qr = myMethod->computeQueryRep(*q);
+
+        TextQueryRep *textQR = (TextQueryRep *)(qr);
+
+
+        textQR->startIteration();
+        while(textQR->hasMore())//query terms
+        {
+            vector<pair<double,int> >simTermid;
+            vector<double> qtemp,dtemp;
+            QueryTerm *qt = textQR->nextTerm();
+
+            if(wordEmbedding.find(qt->id()) != wordEmbedding.end())
+                qtemp = wordEmbedding[qt->id()];
+            else
+                continue;
+
+            cout<<wordEmbedding.size()<<" "<<ind->termCountUnique()<<endl;
+
+            for(int i =1 ; i< ind->termCountUnique() ; i++)
+            {
+
+                if(wordEmbedding.find(i) != wordEmbedding.end())
+
+                {
+                    dtemp = wordEmbedding[i];
+                    //cout<<"here!\n";
+                }
+                else
+                {
+                    //cout<<"here22222!\n";
+                    continue;
+                }
+                //if(dtemp.size() == 0 )
+                //    continue;
+
+
+                double sim = myMethod->cosineSim(qtemp,dtemp);
+                simTermid.push_back(pair<double,int>(sim,i));
+            }
+            std::sort(simTermid.begin() , simTermid.end(),pairCompare);
+
+
+            inputfile<<ind->term(qt->id())<<": ";
+            for(int i=simTermid.size()-1 ; i> simTermid.size()- 5;i--)
+                inputfile <<"( "<< ind->term(simTermid[i].second)<<" , "<<simTermid[i].first<<" ) ";
+
+            inputfile<<endl;
+            delete qt;
+            simTermid.clear();qtemp.clear();dtemp.clear();
+        }
+
+        delete textQR;
+        delete q;
+        //delete qr;
+        //delete d;
+    }
+    inputfile<<endl;
+    inputfile.close();
+
+
+}
+
+
+
 
 
 #if 0
 #include "pugixml.hpp"
-using namespace pugi;
+using namespace spugi;
 void ParseQuery(){
     ofstream out("topics.txt");
     xml_document doc;
