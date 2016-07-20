@@ -973,7 +973,9 @@ public:
     //double **coefMatrix;
     //vector<vector<double> >coefMatrix(100,vector<double>(100));
     vector<vector<double> >coefMatrix;
-    vector<double> queryAvgVec;
+    //vector<double> queryAvgVec;
+    vector<double> Vq, Vwn ,Vbwn;
+    double numberOfSelectedTopWord;
 };
 
 

@@ -259,9 +259,14 @@ lemur::retrieval::RetMethod::RetMethod(const Index &dbIndex,
     alphaCoef = 0.8;
     lambdaCoef = 0.05;
     betaCoef = 0.01;
-    etaCoef = 1;
+    etaCoef = 0.01;
 
-    queryAvgVec.assign(W2VecDimSize , -10.0);
+    //queryAvgVec.assign(W2VecDimSize , -10.0);
+    Vq.assign(W2VecDimSize , 0.0);
+    Vbwn.assign(W2VecDimSize , 0.0);
+    Vwn.assign(W2VecDimSize , 0.0);
+
+    numberOfSelectedTopWord = 20.0;
 
 
 
@@ -699,8 +704,6 @@ void lemur::retrieval::RetMethod::updateTextQuery(TextQueryRep &origRep,
 void lemur::retrieval::RetMethod::computeRelNonRelDist(TextQueryRep &origRep,
                                                        const vector<int> relDocs, const vector<int> nonRelDocs,bool isRelevant)
 {
-
-    cout<<"ddddddddddddddd";
     COUNT_T numTerms = ind.termCountUnique();
 
     lemur::langmod::DocUnigramCounter *dCounter;
@@ -793,72 +796,68 @@ void lemur::retrieval::RetMethod::computeRelNonRelDist(TextQueryRep &origRep,
         probWordVec.push_back(pair<double,int>(wprob,wid));
     }
 
-    ofstream outputfile;
+    //ofstream outputfile;
     if(isRelevant)
-        outputfile.open("outputfiles/mixtureRelDocs.txt",ios::app);
+    {
+        Vwn.clear(); Vwn.assign(W2VecDimSize,0.0);
+        //outputfile.open("outputfiles/mixtureRelDocs.txt",ios::app);
+    }
     else
-        outputfile.open("outputfiles/mixtureNonRelDocs.txt",ios::app);
+    {
+        Vbwn.clear(); Vbwn.assign(W2VecDimSize,0.0);
+        //outputfile.open("outputfiles/mixtureNonRelDocs.txt",ios::app);
+    }
 
     set<int> queryWords;
     origRep.startIteration();
     while(origRep.hasMore())
         queryWords.insert(origRep.nextTerm()->id());
 
-    vector<double> Vq(W2VecDimSize,0.0),Vwn(W2VecDimSize,0.0),Vbwn(W2VecDimSize,0.0);
-
-    //cerr<<"here1111\n";
+    //vector<double> Vq(queryAvgVec);
+    //vector<double> Vwn(W2VecDimSize,0.0),Vbwn(W2VecDimSize,0.0);
 
     std::sort(probWordVec.begin(),probWordVec.end(),pairCompare);
-    if(probWordVec.size() > 0)
+    if(probWordVec.size() > numberOfSelectedTopWord)
     {
-        for(int i=probWordVec.size()-1 ; i> probWordVec.size()- 20 ; i--)
+        for(int i = probWordVec.size()-1 ; i > probWordVec.size()- (int)numberOfSelectedTopWord ; i--)
         {
-            //cerr<<"here22222\n";
-            //outputfile <<" ("<< ind.term(probWordVec[i].second)<<","<<probWordVec[i].first<<")";
-
-            //cerr<<"here3333\n";
             if(isRelevant)
             {
-                //cerr<<"here55555\n";
-                for(int jj = 0 ;jj < W2VecDimSize ;jj++)
-                    Vwn[jj] +=  wordEmbedding[probWordVec[i].second][jj] ;
+                if(wordEmbedding.find(probWordVec[i].second) != wordEmbedding.end())
+                {
+                    vector<double> tt = wordEmbedding[probWordVec[i].second];
+                    for(int jj = 0 ;jj < W2VecDimSize ;jj++)
+                    {
+                        Vwn[jj] +=  tt[jj] ;
+                    }                 
+                }else
+                {
+                    cerr<<"fix me!\n";//Fix Me!!!!!!!!!!!!
+                    //cerr<<jj<<" "<<probWordVec[i].second<<" "<<probWordVec[i].first<<" "<<ind.term(probWordVec[i].second)<<"--";
+                }
             }
             else
             {
                 if( queryWords.find(probWordVec[i].second) == queryWords.end() )//is not query word(ignore query words for Vwnb)
                 {
-                    //cerr<<"here6666\n";
+                    vector<double>tt = wordEmbedding[probWordVec[i].second];
                     for(int jj = 0 ;jj < W2VecDimSize ;jj++)
-                        Vbwn[jj] += wordEmbedding[probWordVec[i].second][jj] ;
+                        Vbwn[jj] += tt[jj] ;
                 }
             }
-
-            //cerr<<"here77777\n";
-
         }
         if(isRelevant)
             for(int i=0 ;i < W2VecDimSize ; i++)
-                Vwn[i]/=100.0;
+                Vwn[i] /= numberOfSelectedTopWord;
         else
             for(int i=0 ;i < W2VecDimSize ; i++)
-                Vbwn[i]/=100.0;
+                Vbwn[i] /= numberOfSelectedTopWord;
 
-        //outputfile<<endl;
     }else
-        cout<<"\nPROBWORDVEC size == 0 ????????\n\n";
+        cout<<"\n\nPROBWORDVEC size < 20 ????????\n\n";
 
+    //outputfile.close();
 
-    //}
-    //outputfile<<endl;
-    //}
-    outputfile.close();
-
-
-    cerr<<"here1111222222222\n";
-    for(int i = 0 ; i < this->queryAvgVec.size() ; i++)
-    {
-        cout<<i<<" "<<queryAvgVec[i]<<" "<<Vwn[i]<<" "<<Vbwn[i]<<endl;
-    }
     computeCoefMatrix(Vq , Vwn , Vbwn);
 
     delete fblm;
@@ -879,9 +878,6 @@ void lemur::retrieval::RetMethod::multiplyVec2Vec(vector<double> m1, vector<doub
 }
 void lemur::retrieval::RetMethod::multiplyMatrix2Vec(vector<vector<double> >m1 ,vector<double> m2,vector<double>&res  )
 {
-    cerr<<"hereaaaaaaaaaaa1111\n";
-
-
     //(N*N)^T * (1*N)^T
     for(int j = 0 ; j < W2VecDimSize ; j++)
         for(int k =0 ; k < W2VecDimSize ; k++)
@@ -890,63 +886,65 @@ void lemur::retrieval::RetMethod::multiplyMatrix2Vec(vector<vector<double> >m1 ,
             res[j] += m1[k][j] * m2[k];
         }
 }
-bool flag =true;
-void lemur::retrieval::RetMethod::computeCoefMatrix(vector<double> Vq , vector<double> Vwn , vector<double> Vbwn)
+//bool flag =true;//fix me!!!!!!
+void lemur::retrieval::RetMethod::computeCoefMatrix(vector<double> Vqq , vector<double> Vwnn , vector<double> Vbwnn)
 {
-//    cout<<"VQQQQQQQQQQQQQQQQQQQQQQQ\n";
-//    for(int i = 0 ; i < Vq.size() ; i++)
-//    {
-//        cout<<i<<" "<<Vq[i]<<" "<<Vwn[i]<<" "<<Vbwn[i]<<endl;
-//    }
 
-    int epoch = 1;
-    while(epoch-- && flag)
+    int epoch = 5;
+    while(epoch--)
     {
-        flag = false;
-        vector<vector<double> >wnMatrix(W2VecDimSize ,vector<double>(W2VecDimSize , -10.0));
+        vector<vector<double> >wnMatrix(W2VecDimSize ,vector<double>(W2VecDimSize , -10.0));//??????????????????????
         for(int i = 0 ; i < W2VecDimSize ; i++)
             for(int j = 0 ; j < W2VecDimSize ; j++)
             {
-                wnMatrix[i][j] = coefMatrix[i][j];
-
-                //cout<< i <<" "<< j <<" ";
-                //cout<<wnMatrix[i][j]<<endl;
+                wnMatrix[i][j] = coefMatrix[i][j];//?????????????????????????????????????????????????
             }
+        //cout<<"0 "<<coefMatrix[50][50]<<" "<<wnMatrix[50][50]<<endl;
 
         vector<double>temp(W2VecDimSize ,-10.0);
         //rel
-        for(int i = 0 ; i < Vwn.size() ; i++)
-        {
-            multiplyMatrix2Vec(wnMatrix,Vq,temp);
-            cerr<<"here777777777777\n";
-            for(int ii = 0 ; ii < temp.size(); ii++)
-                temp[ii] = temp[ii] - Vwn[ii];
-            multiplyVec2Vec(temp,Vq,wnMatrix);
-            cerr<<"here88888888888\n";
-        }
-
-        break;/////////////////////////////////////////
+        multiplyMatrix2Vec(wnMatrix,Vq,temp);
+        for(int ii = 0 ; ii < W2VecDimSize; ii++)
+            temp[ii] = temp[ii] - Vwn[ii];
+        multiplyVec2Vec(temp,Vq,wnMatrix);
+        temp.clear();temp.assign(W2VecDimSize,-10.0);
+        //cout<<"1 "<<coefMatrix[50][50]<<" "<<wnMatrix[50][50]<<" "<<endl;
 
         //nonRel
         vector<vector<double> >wnbMatrix(W2VecDimSize ,vector<double>(W2VecDimSize , -10.0));
         for(int i = 0 ; i < W2VecDimSize ; i++)
             for(int j = 0 ; j < W2VecDimSize ; j++)
                 wnbMatrix[i][j] = coefMatrix[i][j];
+        //cout<<"2 "<<coefMatrix[50][50]<<" "<<wnMatrix[50][50]<<" "<<wnbMatrix[50][50]<<endl;
 
-        for(int i = 0 ; i < Vbwn.size() ; i++)
-        {
-            multiplyMatrix2Vec(wnbMatrix,Vq,temp);
-            cerr<<"here99999999\n";
-            for(int ii = 0 ; ii < temp.size(); ii++)
-                temp[ii] = temp[ii] - Vbwn[ii];
-            multiplyVec2Vec(temp,Vq,wnbMatrix);
-            cerr<<"here10000000\n";
-        }
+        multiplyMatrix2Vec(wnbMatrix,Vq,temp);
+
+        for(int ii = 0 ; ii < W2VecDimSize; ii++)
+            temp[ii] = temp[ii] - Vbwn[ii];
+
+        multiplyVec2Vec(temp,Vq,wnbMatrix);
+        //cout<<"3 "<<coefMatrix[50][50]<<" "<<wnMatrix[50][50]<<" "<<wnbMatrix[50][50]<<endl;
+
         //diff
-        for(int i = 0 ; i < wnbMatrix.size() ; i++)
-            for( int j = 0 ; j < wnbMatrix[i].size() ; j++ )
-                coefMatrix[i][j] = etaCoef*( alphaCoef*wnMatrix[i][j] - lambdaCoef*wnbMatrix[i][j] - betaCoef*coefMatrix[i][j]);
+        double norm = 0;
+        for(int i = 0 ; i < W2VecDimSize ; i++)
+            for( int j = 0 ; j < W2VecDimSize ; j++ )
+            {
+                double temp =coefMatrix[i][j];
 
+                coefMatrix[i][j] = coefMatrix[i][j] - etaCoef * ( alphaCoef * wnMatrix[i][j] - lambdaCoef * wnbMatrix[i][j] - betaCoef * coefMatrix[i][j]);
+
+                norm = (temp - coefMatrix[i][j])*(temp - coefMatrix[i][j]);
+            }
+
+        norm = std::sqrt(norm);
+        //cout<<1e1<<" "<<1e2;
+        cout<<"norm : "<<norm<<endl;
+        if(norm < 0.01)
+            break;
+
+        //cout<<"4 "<<coefMatrix[50][50]<<" "<<wnMatrix[50][50]<<" "<<wnbMatrix[50][50]<<endl;
+        //cerr<<"end epoch\n";
 
     }
 }

@@ -48,7 +48,7 @@ void writeDocs2File(Index*);
 void showNearerTermInW2V(DocStream *qs,RetMethod *myMethod ,Index *ind);
 bool pairCompare(const std::pair<double, int>& firstElem, const std::pair<double, int>& secondElem);
 void showNearerTerms2QueryVecInW2V(DocStream *qs,RetMethod *myMethod ,Index *ind, int avgOrMax);
-void computeQueryAvgVec(DocStream *qs,RetMethod *myMethod );
+void computeQueryAvgVec(Document *d,RetMethod *myMethod );
 
 extern double startThresholdHM , endThresholdHM , intervalThresholdHM ;
 extern int WHO;// 0--> server , 1-->Mozhdeh, 2-->AP, other-->Hossein
@@ -162,8 +162,13 @@ void computeRSMethods(Index* ind)
 
     for (double thresh = start_thresh ; thresh<=end_thresh ; thresh += intervalThresholdHM)
     {
-
 #if UPDTHRMODE == 1
+        //for(myMethod->alphaCoef = 0.1;myMethod->alphaCoef < 1; myMethod->alphaCoef+=0.2)
+        //{
+        //  for(myMethod->betaCoef = 0.1;myMethod->betaCoef < 1; myMethod->betaCoef+=0.2)
+        //    {
+        //    for(myMethod->lambdaCoef = 0.1;myMethod->lambdaCoef < 1; myMethod->lambdaCoef +=0.2)
+        //    {
 
         //for(double c1 = 0.01 ; c1<=0.091 ;c1+=0.02)//inc
         double c1 = 0.02;
@@ -208,8 +213,6 @@ void computeRSMethods(Index* ind)
                             //myMethod->clearRelNonRelCountFlag();
                             //myMethod->clearPrevDistQuery();
 
-                            computeQueryAvgVec(qs,myMethod);
-
                             myMethod->setThreshold(thresh);
                             double relSumScores =0.0,nonRelSumScores = 0.0;
 
@@ -223,6 +226,10 @@ void computeRSMethods(Index* ind)
                             q = new TextQuery(*d);
                             QueryRep *qr = myMethod->computeQueryRep(*q);
                             cout<<"qid: "<<q->id()<<endl;
+
+
+                            computeQueryAvgVec(d,myMethod);
+
 
                             bool newNonRel = false , newRel = false;
 
@@ -312,6 +319,7 @@ void computeRSMethods(Index* ind)
 #endif
                             }//endfor docs
 
+
                             results.Sort();
                             resultFile.writeResults(q->id() ,&results,results.size());
                             relRetCounter += relJudgDocs.size();
@@ -368,6 +376,9 @@ void computeRSMethods(Index* ind)
                 }//end numOfShownNonRel for
             }//end c1 for
         }//end c2 for
+        //}alpha
+        //}beta
+        //}lambda
 #endif
 
 
@@ -663,53 +674,38 @@ void showNearerTerms2QueryVecInW2V(DocStream *qs,RetMethod *myMethod ,Index *ind
 
 }
 
-void computeQueryAvgVec(DocStream *qs,RetMethod *myMethod )
+void computeQueryAvgVec(Document *d,RetMethod *myMethod )
 {
-    cout<<"111111111111111\n";
-    qs->startDocIteration();
-    TextQuery *q;
-    while(qs->hasMore())//queries
+    TextQuery *q = new TextQuery(*d);
+    QueryRep *qr = myMethod->computeQueryRep(*q);
+    TextQueryRep *textQR = (TextQueryRep *)(qr);
+    vector<vector<double> > queryTerms;
+    double counter = 0;
+    textQR->startIteration();
+    while(textQR->hasMore())
     {
-        cout<<"22222222222222222\n";
-        Document* d = qs->nextDoc();
-        q = new TextQuery(*d);
-        QueryRep *qr = myMethod->computeQueryRep(*q);
-        TextQueryRep *textQR = (TextQueryRep *)(qr);
-
-        vector<vector<double> > queryTerms;
-        double counter =0 ;
-        textQR->startIteration();
-        while(textQR->hasMore())
+        counter += 1;
+        QueryTerm *qt = textQR->nextTerm();
+        if(wordEmbedding.find(qt->id()) != wordEmbedding.end())
+            queryTerms.push_back(wordEmbedding[qt->id()]);
+        else
         {
-            cout<<"4444444444444\n";
-
-            counter += 1;
-            QueryTerm *qt = textQR->nextTerm();
-            if(wordEmbedding.find(qt->id()) != wordEmbedding.end())
-                queryTerms.push_back(wordEmbedding[qt->id()]);
-            else
-            {
-                delete qt;
-                continue;
-            }
             delete qt;
+            continue;
         }
-        vector<double> queryAvg( myMethod->W2VecDimSize);
-        for(int i = 0 ; i< queryTerms.size() ; i++)
-        {
-            cout<<"33333333333\n";
-            for(int j = 0 ; j < queryTerms[i].size() ; j++)
-                queryAvg[j] += queryTerms[i][j];
-        }
-        for(int i = 0 ; i < queryAvg.size() ;i++)
-            queryAvg[i] /= counter;
-
-        cout<<"5555555555\n";
-        myMethod->queryAvgVec.clear();
-        myMethod->queryAvgVec = queryAvg;
-        cout<<"5555555555\n";
-
+        delete qt;
     }
+    vector<double> queryAvg( myMethod->W2VecDimSize);
+    for(int i = 0 ; i< queryTerms.size() ; i++)
+    {
+        for(int j = 0 ; j < queryTerms[i].size() ; j++)
+            queryAvg[j] += queryTerms[i][j];
+    }
+    for(int i = 0 ; i < queryAvg.size() ;i++)
+        queryAvg[i] /= counter;
+
+    myMethod->Vq.clear();
+    myMethod->Vq = queryAvg;
 }
 
 void showNearerTermInW2V(DocStream *qs,RetMethod *myMethod ,Index *ind)
