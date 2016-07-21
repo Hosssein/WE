@@ -309,6 +309,7 @@ lemur::retrieval::RetMethod::~RetMethod()
 
     //delete [] relComputed;//FIX ME!!!!!!!
     //delete [] nonRelComputed;//FIX ME!!!!!!!
+
     //delete [] coefMatrix[]; //FIX ME!!!!
 }
 
@@ -481,6 +482,8 @@ void lemur::retrieval::RetMethod::updateThreshold(lemur::api::TextQueryRep &orig
 }
 
 extern map<int,vector<double> >wordEmbedding;
+extern map<int,vector<double> >docIdKeyWords;
+
 float lemur::retrieval::RetMethod::cosineSim(vector<double> aa, vector<double> bb)
 {
     double numerator = 0.0 ,denominator =0.0,sum_a = 0.0,sum_b = 0.0;
@@ -632,23 +635,27 @@ vector<double> lemur::retrieval::RetMethod::extractKeyWord(int newDocId)
 float lemur::retrieval::RetMethod::computeProfDocSim(lemur::api::TextQueryRep *textQR,int docID ,
                                                      vector<int> relJudgDoc ,vector<int> nonReljudgDoc , bool newNonRel , bool newRel)
 {
-    vector<double> newDocAvgKeyWordsVec = extractKeyWord(docID) ;
-    return cosineSim(Vq,newDocAvgKeyWordsVec);
+#if 1
+    vector<double> newDocAvgKeyWordsVec = docIdKeyWords[docID];//extractKeyWord(docID) ;//;
 
+    return cosineSim(Vq,newDocAvgKeyWordsVec);
+#endif
 #if 0
     vector<vector<double> > docTerms;
     double counter = 0.0 ;
 
     TermInfoList *docTermInfoList =  ind.termInfoList(docID);
     docTermInfoList->startIteration();
+    const std::map<int,vector<double> >::iterator endIt = wordEmbedding.end();
     while(docTermInfoList->hasMore())
     {
 
         TermInfo *ti = docTermInfoList->nextEntry();
-        if(wordEmbedding.find(ti->termID()) != wordEmbedding.end())
+        const std::map<int,vector<double> >::iterator itt = wordEmbedding.find(ti->termID());
+        if(itt != endIt)
         {
             counter += 1;
-            docTerms.push_back(wordEmbedding[(ti->termID())]);
+            docTerms.push_back(itt->second);
         }
         else
             continue;
@@ -930,23 +937,22 @@ void lemur::retrieval::RetMethod::computeRelNonRelDist(TextQueryRep &origRep,
 
     std::sort(probWordVec.begin(),probWordVec.end(),pairCompare);
     double wordCount = std::min((double)probWordVec.size() , numberOfSelectedTopWord);
+    const std::map<int,vector<double> >::iterator endIt = wordEmbedding.end();
     for(int i = 0 ; i < wordCount ; i++)
     {
         if(isRelevant)
         {
-            if(wordEmbedding.find(probWordVec[i].second) != wordEmbedding.end())
+            const std::map<int,vector<double> >::iterator it = wordEmbedding.find(probWordVec[i].second);
+            if( it != endIt )
             {
 
-                vector<double> tt = wordEmbedding[probWordVec[i].second];
+                vector<double> tt = it->second;//wordEmbedding[probWordVec[i].second];
                 for(int jj = 0 ;jj < W2VecDimSize ;jj++)
                 {
                     Vwn[jj] +=  tt[jj] ;
                 }
-            }//else
-            //{
-            //cerr<<"fix me!\n";//Fix Me!!!!!!!!!!!!
-            //cerr<<jj<<" "<<probWordVec[i].second<<" "<<probWordVec[i].first<<" "<<ind.term(probWordVec[i].second)<<"--";
-            //}
+            }//else: cerr<<"fix me!\n";//Fix Me!!!!!!!!!!!!
+
         }
         else
         {

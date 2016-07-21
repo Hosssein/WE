@@ -19,6 +19,8 @@
 
 #include "Parameters.h"
 
+#include <iomanip>//for setprecisoin
+
 using namespace lemur::api;
 using namespace lemur::langmod;
 using namespace lemur::parse;
@@ -49,6 +51,8 @@ void showNearerTermInW2V(DocStream *qs,RetMethod *myMethod ,Index *ind);
 bool pairCompare(const std::pair<double, int>& firstElem, const std::pair<double, int>& secondElem);
 void showNearerTerms2QueryVecInW2V(DocStream *qs,RetMethod *myMethod ,Index *ind, int avgOrMax);
 void computeQueryAvgVec(Document *d,RetMethod *myMethod );
+void computeMixtureForDocsAndWriteToFile(Index *ind,RetMethod *myMethod);
+void readDocIdKeyWords();
 
 extern double startThresholdHM , endThresholdHM , intervalThresholdHM ;
 extern int WHO;// 0--> server , 1-->Mozhdeh, 2-->AP, other-->Hossein
@@ -68,7 +72,7 @@ map<string , set<string> >queryRelDocsMap;
 string judgmentPath,indexPath,queryPath;
 string resultPath = "";
 map<int,vector<double> >wordEmbedding;
-
+map<int ,vector<double> >docIdKeyWords;
 
 
 int main(int argc, char * argv[])
@@ -139,6 +143,9 @@ void computeRSMethods(Index* ind)
     RetMethod *myMethod = new RetMethod(*ind,"",accumulator);
 
 
+    //computeMixtureForDocsAndWriteToFile(ind,myMethod);
+    readDocIdKeyWords();
+
     //showNearerTermInW2V(qs,myMethod,ind);
     //showNearerTerms2QueryVecInW2V(qs,myMethod,ind,1);
     //return;
@@ -146,7 +153,7 @@ void computeRSMethods(Index* ind)
 
     string outFilename;
     if(DATASET == 0)
-        outFilename =outputFileNameHM+"_infile_WE_W2V";
+        outFilename =outputFileNameHM+"_infile_WE_W2V_2-200";
     else if (DATASET == 1)
         outFilename =outputFileNameHM+"_ohsu";
 
@@ -180,12 +187,12 @@ void computeRSMethods(Index* ind)
                 //myMethod->setThreshold(init_thr);
                 myMethod->setC2(c2);
 
-                //for(int numOfShownNonRel =2;numOfShownNonRel< 5;numOfShownNonRel+=1 )
-                int numOfShownNonRel = 2;
+                for(int numOfShownNonRel =2;numOfShownNonRel< 6;numOfShownNonRel+=1 )
+                //int numOfShownNonRel = 2;
                 {
 
-                    //for(int numOfnotShownDoc = 200 ;numOfnotShownDoc <= 401 ; numOfnotShownDoc+=100)
-                    int numOfnotShownDoc = 200;
+                    for(int numOfnotShownDoc = 200 ;numOfnotShownDoc <= 401 ; numOfnotShownDoc+=100)
+                    //int numOfnotShownDoc = 200;
                     {
                         myMethod->setThreshold(thresh);
 
@@ -243,7 +250,7 @@ void computeRSMethods(Index* ind)
                                 continue;
                             }
 
-                            /*
+                            /*//FIX ME!!!!!!!!!!!!!!!!!!
                             myMethod->relComputed = new bool[relDocs.size()];
                             for(int ii =0; ii < relDocs.size(); ii++)
                                 myMethod->relComputed[ii]=false;
@@ -427,6 +434,78 @@ void loadJudgment()
     /*map<string , vector<string> >::iterator it;
     for(it = queryRelDocsMap.begin();it!= queryRelDocsMap.end() ; ++it)
         cerr<<it->first<<endl;*/
+
+}
+
+void computeMixtureForDocsAndWriteToFile(Index *ind ,RetMethod *myMethod)
+{
+
+    vector<int>documentIDs;
+    DocStream *qs = new BasicDocStream(queryPath); // Your own path to topics
+    qs->startDocIteration();
+    TextQuery *q;
+    while(qs->hasMore())
+    {
+        Document *d = qs->nextDoc();
+        q = new TextQuery(*d);
+        QueryRep *qr = myMethod->computeQueryRep(*q);
+
+        vector<int>temp = queryDocList(ind , ((TextQueryRep *)(qr)));
+        documentIDs.insert(documentIDs.begin() ,temp.begin(), temp.end());
+
+        delete q;
+        delete qr;
+    }
+    delete qs;
+
+    cout<<"before: "<<documentIDs.size()<<endl;
+    sort( documentIDs.begin(), documentIDs.end() );
+    documentIDs.erase( unique( documentIDs.begin(), documentIDs.end() ), documentIDs.end() );
+
+    cout<<"after: "<<documentIDs.size()<<endl;
+
+
+    ofstream out;
+    out.open("docKeyWords_top20word.txt");
+    out<<std::setprecision(14);
+    for(int i = 0 ; i < documentIDs.size() ;i++)
+    {
+        out<<documentIDs[i]<< " ";
+        vector<double> dd = myMethod->extractKeyWord(documentIDs[i]);
+        for(int j = 0 ; j < dd.size() ; j++)
+            out<<setprecision(14)<<dd[j]<<" ";
+        out<<endl;
+    }
+    out.close();
+}
+
+void readDocIdKeyWords()
+{
+    ifstream input("docKeyWords_top20word.txt");
+    if(input.is_open())
+    {
+        string line;
+        while(getline(input ,line))
+        {
+
+            istringstream iss(line);
+            int docid=0;
+            iss >> docid;
+            vector<double> temp;
+            do
+            {
+                double sub;
+                iss >> sub;
+                temp.push_back(sub);
+                //cout << "Substring: " << sub << endl;
+            } while (iss);
+            docIdKeyWords.insert(pair<int , vector<double> >(docid,temp));
+
+        }
+
+    }else
+        cerr<<"docKeyWords.txt doesn't exist!!!!!!!!!";
+
 
 }
 vector<int> queryDocList(Index* ind,TextQueryRep *textQR)
