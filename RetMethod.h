@@ -722,6 +722,8 @@ public:
 
     virtual float cosineSim(vector<double> aa, vector<double> bb);
 
+    virtual vector<double> extractKeyWord(int newDocId);
+
     double fangScore( DocIDSet &fbDocs, int docID, bool newNonRel)
     {
 
@@ -953,9 +955,9 @@ protected:
 
     void computeRelNonRelDist(TextQueryRep &origRep,
                               const vector<int> relDocs, const vector<int> nonRelDocs, bool isRelevant); //!!!
-    void multiplyMatrix2Vec(vector<vector<double> >m1 ,vector<double> m2,vector<double> &res );
-    void multiplyVec2Vec(vector<double> m1, vector<double> m2, vector<vector<double> >&res );
-    void computeCoefMatrix(vector<double> Vq , vector<double> Vwn , vector<double> Vbwn);
+    void multiplyMatrix2Vec(vector<double> &res );
+    void multiplyVec2Vec(vector<double> m1,  vector<vector<double> >&res );
+    void computeCoefMatrix();
     //@}
 
     RetParameter::DocSmoothParam docParam;

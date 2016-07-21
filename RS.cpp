@@ -170,12 +170,12 @@ void computeRSMethods(Index* ind)
         //    for(myMethod->lambdaCoef = 0.1;myMethod->lambdaCoef < 1; myMethod->lambdaCoef +=0.2)
         //    {
 
-        //for(double c1 = 0.01 ; c1<=0.091 ;c1+=0.02)//inc
-        double c1 = 0.02;
+        for(double c1 = 0.006 ; c1<=0.031 ;c1+=0.006)//inc
+        //double c1 = 0.01;
         {
             myMethod->setC1(c1);
-            //for(double c2 = 0.001 ; c2 <= 0.0091 ; c2+=0.002)//dec
-            double c2 = 0.002;
+            for(double c2 = 0.001 ; c2 <= 0.0091 ; c2+=0.002)//dec
+            //double c2 = 0.002;
             {
                 //myMethod->setThreshold(init_thr);
                 myMethod->setC2(c2);
@@ -227,9 +227,9 @@ void computeRSMethods(Index* ind)
                             QueryRep *qr = myMethod->computeQueryRep(*q);
                             cout<<"qid: "<<q->id()<<endl;
 
-
+                            ///*******************************************************///
                             computeQueryAvgVec(d,myMethod);
-
+                            ///*******************************************************///
 
                             bool newNonRel = false , newRel = false;
 
@@ -243,6 +243,7 @@ void computeRSMethods(Index* ind)
                                 continue;
                             }
 
+                            /*
                             myMethod->relComputed = new bool[relDocs.size()];
                             for(int ii =0; ii < relDocs.size(); ii++)
                                 myMethod->relComputed[ii]=false;
@@ -250,6 +251,7 @@ void computeRSMethods(Index* ind)
                             myMethod->nonRelComputed = new bool[relDocs.size()*10];//FIX ME!!!!!!!!!!!!!!!!!!
                             for(int ii =0; ii < 10*relDocs.size(); ii++)
                                 myMethod->nonRelComputed[ii]=false;
+                            */
 
                             //for(int docID = 1 ; docID < ind->docCount() ; docID++){ //compute for all doc
                             vector<int> docids = queryDocList(ind,((TextQueryRep *)(qr)));
@@ -290,7 +292,7 @@ void computeRSMethods(Index* ind)
                                         break;
                                     }
 
-#if 1//FBMODE
+#if 0//FBMODE
                                     //if(relJudgDocs.size()==5 )
                                     myMethod->updateProfile(*((TextQueryRep *)(qr)),relJudgDocs , nonRelJudgDocs );
 #endif
@@ -319,6 +321,7 @@ void computeRSMethods(Index* ind)
 #endif
                             }//endfor docs
 
+                            cerr<<"\nresults size : "<<results.size();
 
                             results.Sort();
                             resultFile.writeResults(q->id() ,&results,results.size());
@@ -571,7 +574,7 @@ void readWordEmbeddingFile(Index *ind)
 
 bool pairCompare(const std::pair<double, int>& firstElem, const std::pair<double, int>& secondElem)
 {
-    return firstElem.first < secondElem.first;
+    return firstElem.first > secondElem.first;
 }
 
 void showNearerTerms2QueryVecInW2V(DocStream *qs,RetMethod *myMethod ,Index *ind, int avgOrMax)
@@ -655,7 +658,7 @@ void showNearerTerms2QueryVecInW2V(DocStream *qs,RetMethod *myMethod ,Index *ind
         }
         std::sort(simTermid.begin() , simTermid.end(),pairCompare);
 
-        for(int i=simTermid.size()-1 ; i> simTermid.size()- 10 ;i--)//FIX ME!!!!!!!!!!!!!!!!!!!
+        for(int i = 0 ; i < 10 ; i++)
             inputfile <<"( "<< ind->term(simTermid[i].second)<<" , "<<simTermid[i].first<<" ) ";
 
         inputfile<<endl;
@@ -680,14 +683,17 @@ void computeQueryAvgVec(Document *d,RetMethod *myMethod )
     QueryRep *qr = myMethod->computeQueryRep(*q);
     TextQueryRep *textQR = (TextQueryRep *)(qr);
     vector<vector<double> > queryTerms;
-    double counter = 0;
+    //double counter = 0;
+    const std::map<int,vector<double> >::iterator endIt = wordEmbedding.end();
     textQR->startIteration();
     while(textQR->hasMore())
     {
-        counter += 1;
+        //counter += 1;
         QueryTerm *qt = textQR->nextTerm();
-        if(wordEmbedding.find(qt->id()) != wordEmbedding.end())
-            queryTerms.push_back(wordEmbedding[qt->id()]);
+        const std::map<int,vector<double> >::iterator it = wordEmbedding.find(qt->id());
+
+        if(it != endIt)//found
+            queryTerms.push_back(it->second);
         else
         {
             delete qt;
@@ -695,16 +701,17 @@ void computeQueryAvgVec(Document *d,RetMethod *myMethod )
         }
         delete qt;
     }
-    vector<double> queryAvg( myMethod->W2VecDimSize);
+    vector<double> queryAvg( myMethod->W2VecDimSize ,0.0);
     for(int i = 0 ; i< queryTerms.size() ; i++)
     {
         for(int j = 0 ; j < queryTerms[i].size() ; j++)
             queryAvg[j] += queryTerms[i][j];
     }
     for(int i = 0 ; i < queryAvg.size() ;i++)
-        queryAvg[i] /= counter;
+        queryAvg[i] /= (double)(queryTerms.size());
 
     myMethod->Vq.clear();
+    myMethod->Vq.assign(myMethod->W2VecDimSize ,0.0);
     myMethod->Vq = queryAvg;
 }
 
@@ -765,7 +772,8 @@ void showNearerTermInW2V(DocStream *qs,RetMethod *myMethod ,Index *ind)
 
 
             inputfile<<ind->term(qt->id())<<": ";
-            for(int i=simTermid.size()-1 ; i> simTermid.size()- 5;i--)
+            //for(int i=simTermid.size()-1 ; i> simTermid.size()- 5;i--)
+            for(int i = 0 ; i < 5 ; i++)
                 inputfile <<"( "<< ind->term(simTermid[i].second)<<" , "<<simTermid[i].first<<" ) ";
 
             inputfile<<endl;
