@@ -914,7 +914,7 @@ void lemur::retrieval::RetMethod::computeRelNonRelDist(TextQueryRep &origRep,
     }
 
     //ofstream outputfile;
-    if(isRelevant)
+    /*if(isRelevant)
     {
         Vwn.clear();
         Vwn.assign(W2VecDimSize,0.0);
@@ -925,53 +925,74 @@ void lemur::retrieval::RetMethod::computeRelNonRelDist(TextQueryRep &origRep,
         Vbwn.clear();
         Vbwn.assign(W2VecDimSize,0.0);
         //outputfile.open("outputfiles/mixtureNonRelDocs.txt",ios::app);
-    }
+    }*/
 
-    set<int> queryWords;
+    vector<int> queryWords;
     origRep.startIteration();//ehtemalan Fix Meee!!!!!!!!!!!!!!!!!!!!!!!!!
     while(origRep.hasMore())
-        queryWords.insert(origRep.nextTerm()->id());
+    {
+        int idd = origRep.nextTerm()->id();
+        cerr<<idd<<" ";
+        queryWords.push_back(idd);
+    }
+    cerr<<endl;
 
     //vector<double> Vq(queryAvgVec);
     //vector<double> Vwn(W2VecDimSize,0.0),Vbwn(W2VecDimSize,0.0);
 
     std::sort(probWordVec.begin(),probWordVec.end(),pairCompare);
     double wordCount = std::min((double)probWordVec.size() , numberOfSelectedTopWord);
-    const std::map<int,vector<double> >::iterator endIt = wordEmbedding.end();
-    for(int i = 0 ; i < wordCount ; i++)
+    double negWordCount =0.0;
+
+    if(isRelevant)
     {
-        if(isRelevant)
+        Vwn.clear();
+        Vwn.assign(W2VecDimSize,0.0);
+
+        const std::map<int,vector<double> >::iterator endIt = wordEmbedding.end();
+        for(int i = 0 ; i < wordCount ; i++)
         {
             const std::map<int,vector<double> >::iterator it = wordEmbedding.find(probWordVec[i].second);
             if( it != endIt )
             {
-
                 vector<double> tt = it->second;//wordEmbedding[probWordVec[i].second];
                 for(int jj = 0 ;jj < W2VecDimSize ;jj++)
                 {
                     Vwn[jj] +=  tt[jj] ;
                 }
             }//else: cerr<<"fix me!\n";//Fix Me!!!!!!!!!!!!
-
         }
-        else
-        {
-            if( queryWords.find(probWordVec[i].second) == queryWords.end() )//is not query word(ignore query words for Vwnb)
-            {
+    }
+    else
+    {
+        Vbwn.clear();
+        Vbwn.assign(W2VecDimSize,0.0);
 
-                vector<double>tt( wordEmbedding[probWordVec[i].second]);
-                //cerr<<"222222 "<<tt.size()<<endl;
-                for(int jj = 0 ;jj < W2VecDimSize ;jj++)
-                    Vbwn[jj] += tt[jj] ;
+        const vector<int>::iterator endfit = queryWords.end();
+        for(int i = 0 ; i < wordCount ;i++)
+        {
+            const vector<int>::iterator fit = std::find(queryWords.begin() ,queryWords.end(), probWordVec[i].second);
+            //if( queryWords.find(probWordVec[i].second) == queryWords.end() )//is not query word(ignore query words for Vwnb)
+            if(fit == endfit)//not found. is not query word
+            {
+                if(wordEmbedding.find(probWordVec[i].second) != wordEmbedding.end())
+                {
+                    negWordCount+=1;
+                    vector<double>tt =  wordEmbedding[probWordVec[i].second] ;
+                    //cerr<<"222222 "<<tt.size()<<endl;
+                    for(int jj = 0 ;jj < W2VecDimSize ;jj++)
+                        Vbwn[jj] += tt[jj] ;
+                }
             }
         }
+
     }
     if(isRelevant)
         for(int i=0 ;i < W2VecDimSize ; i++)
             Vwn[i] /= wordCount;
     else
         for(int i=0 ;i < W2VecDimSize ; i++)
-            Vbwn[i] /= wordCount;
+            Vbwn[i] /= negWordCount;
 
 
     //outputfile.close();

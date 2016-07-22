@@ -177,21 +177,21 @@ void computeRSMethods(Index* ind)
         //    for(myMethod->lambdaCoef = 0.1;myMethod->lambdaCoef < 1; myMethod->lambdaCoef +=0.2)
         //    {
 
-        for(double c1 = 0.006 ; c1<=0.031 ;c1+=0.006)//inc
+        for(double c1 = 0.001 ; c1<=0.21 ;c1+=0.002)//inc
         //double c1 = 0.01;
         {
             myMethod->setC1(c1);
-            for(double c2 = 0.001 ; c2 <= 0.0091 ; c2+=0.002)//dec
+            for(double c2 = 0.001 ; c2 <= 0.1 ; c2+=0.002)//dec
             //double c2 = 0.002;
             {
                 //myMethod->setThreshold(init_thr);
                 myMethod->setC2(c2);
 
-                for(int numOfShownNonRel =2;numOfShownNonRel< 6;numOfShownNonRel+=1 )
+                for(int numOfShownNonRel =2;numOfShownNonRel< 10;numOfShownNonRel+=1 )
                 //int numOfShownNonRel = 2;
                 {
 
-                    for(int numOfnotShownDoc = 200 ;numOfnotShownDoc <= 401 ; numOfnotShownDoc+=100)
+                    for(int numOfnotShownDoc = 200 ;numOfnotShownDoc <= 1001 ; numOfnotShownDoc+=100)
                     //int numOfnotShownDoc = 200;
                     {
                         myMethod->setThreshold(thresh);
@@ -250,7 +250,8 @@ void computeRSMethods(Index* ind)
                                 continue;
                             }
 
-                            /*//FIX ME!!!!!!!!!!!!!!!!!!
+                            /*
+                            //FIX ME DELETE relcomputed!!!!!!!!!!!!!!!!!!
                             myMethod->relComputed = new bool[relDocs.size()];
                             for(int ii =0; ii < relDocs.size(); ii++)
                                 myMethod->relComputed[ii]=false;
@@ -349,8 +350,12 @@ void computeRSMethods(Index* ind)
                             }
 
 
+
                             delete q;
+
                             delete qr;
+
+                            //delete d;
 
                         }//end queries
 
@@ -508,6 +513,7 @@ void readDocIdKeyWords()
     }else
         cerr<<"docKeyWords.txt doesn't exist!!!!!!!!!";
 
+    input.close();
 
 }
 vector<int> queryDocList(Index* ind,TextQueryRep *textQR)
@@ -627,11 +633,11 @@ void readWordEmbeddingFile(Index *ind)
 
         int termID = ind->term(sub);
 
-        if(termID == 0)//FIX ME!!!!!!!!!!
-        {
-            cout<<sub<<" ";
+        //if(termID == 0)
+        //{
+            //cout<<sub<<" ";
             //continue;
-        }
+        //}
         while (iss>>dd)
             wordEmbedding[termID].push_back(dd);
     }
@@ -699,7 +705,7 @@ void showNearerTerms2QueryVecInW2V(DocStream *qs,RetMethod *myMethod ,Index *ind
         }
 
         inputfile<<" : ";
-        vector<double> queryAvg( myMethod->W2VecDimSize);//FIXME!!!!!!!!!!!!!!!!!!!!!!
+        vector<double> queryAvg( myMethod->W2VecDimSize);
 
         if(avgOrMax == 0)
         {
@@ -795,10 +801,10 @@ void computeQueryAvgVec(Document *d,RetMethod *myMethod )
     myMethod->Vq.assign(myMethod->W2VecDimSize ,0.0);
     myMethod->Vq = queryAvg;
 
-    //delete textQR;
+
     delete qr;
     delete q;
-
+    //delete textQR;
 
 }
 
