@@ -637,8 +637,8 @@ float lemur::retrieval::RetMethod::computeProfDocSim(lemur::api::TextQueryRep *t
 {
 #if 1
     vector<double> newDocAvgKeyWordsVec = docIdKeyWords[docID];//extractKeyWord(docID) ;//;
-
     return cosineSim(Vq,newDocAvgKeyWordsVec);
+
 #endif
 #if 0
     vector<vector<double> > docTerms;

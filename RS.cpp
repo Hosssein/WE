@@ -261,6 +261,7 @@ void computeRSMethods(Index* ind)
                             */
 
                             //for(int docID = 1 ; docID < ind->docCount() ; docID++){ //compute for all doc
+
                             vector<int> docids = queryDocList(ind,((TextQueryRep *)(qr)));
 
                             cout<<"reldocsize: "<<relDocs.size()<<endl;
@@ -270,6 +271,7 @@ void computeRSMethods(Index* ind)
                                 int docID = docids[i];
 
                                 float sim = myMethod->computeProfDocSim(((TextQueryRep *)(qr)) ,docID, relJudgDocs , nonRelJudgDocs , newNonRel,newRel);
+
 
                                 if(sim >=  myMethod->getThreshold() )
                                 {
@@ -792,6 +794,12 @@ void computeQueryAvgVec(Document *d,RetMethod *myMethod )
     myMethod->Vq.clear();
     myMethod->Vq.assign(myMethod->W2VecDimSize ,0.0);
     myMethod->Vq = queryAvg;
+
+    //delete textQR;
+    delete qr;
+    delete q;
+
+
 }
 
 void showNearerTermInW2V(DocStream *qs,RetMethod *myMethod ,Index *ind)
