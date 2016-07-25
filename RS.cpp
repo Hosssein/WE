@@ -53,6 +53,7 @@ void showNearerTerms2QueryVecInW2V(DocStream *qs,RetMethod *myMethod ,Index *ind
 void computeQueryAvgVec(Document *d,RetMethod *myMethod );
 void computeMixtureForDocsAndWriteToFile(Index *ind,RetMethod *myMethod);
 void readDocIdKeyWords();
+void initJudgDocsVector(Index* ind,vector<int>&rel , vector<int>&nonRel,string queryID);
 
 extern double startThresholdHM , endThresholdHM , intervalThresholdHM ;
 extern int WHO;// 0--> server , 1-->Mozhdeh, 2-->AP, other-->Hossein
@@ -69,11 +70,15 @@ extern int updatingThresholdMode;
 
 //map<string , vector<string> >queryRelDocsMap;
 map<string , set<string> >queryRelDocsMap;
+map<string ,set<string> > queryNonRelDocsMap;
 string judgmentPath,indexPath,queryPath;
 string resultPath = "";
 map<int,vector<double> >wordEmbedding;
 map<int ,vector<double> >docIdKeyWords;
 
+
+//int numberOfInitRelDocs = 5;
+//int numberOfInitNonRelDocs = 15;
 
 int main(int argc, char * argv[])
 {
@@ -169,7 +174,6 @@ void computeRSMethods(Index* ind)
 
     for (double thresh = start_thresh ; thresh<=end_thresh ; thresh += intervalThresholdHM)
     {
-#if UPDTHRMODE == 1
         //for(myMethod->alphaCoef = 0.1;myMethod->alphaCoef < 1; myMethod->alphaCoef+=0.2)
         //{
         //  for(myMethod->betaCoef = 0.1;myMethod->betaCoef < 1; myMethod->betaCoef+=0.2)
@@ -177,28 +181,28 @@ void computeRSMethods(Index* ind)
         //    for(myMethod->lambdaCoef = 0.1;myMethod->lambdaCoef < 1; myMethod->lambdaCoef +=0.2)
         //    {
 
-        for(double c1 = 0.001 ; c1<=0.21 ;c1+=0.002)//inc
-        //double c1 = 0.01;
+        //for(double c1 = 0.001 ; c1<=0.21 ;c1+=0.002)//inc
+        double c1 = 0.01;
         {
             myMethod->setC1(c1);
-            for(double c2 = 0.001 ; c2 <= 0.1 ; c2+=0.002)//dec
-            //double c2 = 0.002;
+            //for(double c2 = 0.001 ; c2 <= 0.1 ; c2+=0.002)//dec
+            double c2 = 0.002;
             {
                 //myMethod->setThreshold(init_thr);
                 myMethod->setC2(c2);
 
-                for(int numOfShownNonRel =2;numOfShownNonRel< 10;numOfShownNonRel+=1 )
-                //int numOfShownNonRel = 2;
+                //for(int numOfShownNonRel =2;numOfShownNonRel< 12;numOfShownNonRel+=1 )
+                int numOfShownNonRel = 2;
                 {
 
-                    for(int numOfnotShownDoc = 200 ;numOfnotShownDoc <= 1001 ; numOfnotShownDoc+=100)
-                    //int numOfnotShownDoc = 200;
+                    //for(int numOfnotShownDoc = 200 ;numOfnotShownDoc <= 1301 ; numOfnotShownDoc+=100)
+                    int numOfnotShownDoc = 200;
                     {
                         myMethod->setThreshold(thresh);
 
                         cout<<"c1: "<<c1<<" c2: "<<c2<<" numOfShownNonRel: "<<numOfShownNonRel<<" numOfnotShownDoc: "<<numOfnotShownDoc<<" "<<endl;
                         resultPath = resultFileNameHM.c_str() +numToStr( myMethod->getThreshold() )+"_c1:"+numToStr(c1)+"_c2:"+numToStr(c2)+"_#showNonRel:"+numToStr(numOfShownNonRel)+"_#notShownDoc:"+numToStr(numOfnotShownDoc)+".resW2V";
-#endif
+
 
                         //myMethod->setThreshold(thresh);
                         out<<"threshold: "<<thresh<<endl ;
@@ -226,7 +230,10 @@ void computeRSMethods(Index* ind)
                             int numberOfNotShownDocs = 0,numberOfShownNonRelDocs = 0;
 
                             vector<int> relJudgDocs,nonRelJudgDocs;
+
+
                             results.clear();
+
 
 
                             Document *d = qs->nextDoc();
@@ -234,8 +241,23 @@ void computeRSMethods(Index* ind)
                             QueryRep *qr = myMethod->computeQueryRep(*q);
                             cout<<"qid: "<<q->id()<<endl;
 
-                            ///*******************************************************///
+
+                           ///*******************************************************///
+                            vector<int> rell,nonrell;
+                            //cerr<<"before: "<<myMethod->initRel.size() <<" "<<myMethod->initNonRel.size()<<endl;
+                            initJudgDocsVector(ind ,rell ,nonrell, q->id());
+
+                            myMethod->initNonRel.clear();myMethod->initRel.clear();
+
+                            myMethod->initNonRel.assign(nonrell.begin(), nonrell.end() );
+                            myMethod->initRel.assign(rell.begin() , rell.end() );
+                            //cerr<<"after: "<<myMethod->initRel.size() <<" "<<myMethod->initNonRel.size()<<endl;
+
+
                             computeQueryAvgVec(d,myMethod);
+
+                            myMethod->computeRelNonRelDist(*((TextQueryRep *)(qr)),rell,nonrell,false,false);
+                            myMethod->computeRelNonRelDist(*((TextQueryRep *)(qr)),rell,nonrell,true,false);
                             ///*******************************************************///
 
                             bool newNonRel = false , newRel = false;
@@ -250,7 +272,7 @@ void computeRSMethods(Index* ind)
                                 continue;
                             }
 
-                            /*
+
                             //FIX ME DELETE relcomputed!!!!!!!!!!!!!!!!!!
                             myMethod->relComputed = new bool[relDocs.size()];
                             for(int ii =0; ii < relDocs.size(); ii++)
@@ -259,7 +281,7 @@ void computeRSMethods(Index* ind)
                             myMethod->nonRelComputed = new bool[relDocs.size()*10];//FIX ME!!!!!!!!!!!!!!!!!!
                             for(int ii =0; ii < 10*relDocs.size(); ii++)
                                 myMethod->nonRelComputed[ii]=false;
-                            */
+
 
                             //for(int docID = 1 ; docID < ind->docCount() ; docID++){ //compute for all doc
 
@@ -302,7 +324,7 @@ void computeRSMethods(Index* ind)
                                         break;
                                     }
 
-#if 0//FBMODE
+#if 1//FBMODE
                                     //if(relJudgDocs.size()==5 )
                                     myMethod->updateProfile(*((TextQueryRep *)(qr)),relJudgDocs , nonRelJudgDocs );
 #endif
@@ -356,6 +378,8 @@ void computeRSMethods(Index* ind)
                             delete qr;
 
                             //delete d;
+                            delete []myMethod->relComputed;
+                            delete []myMethod->nonRelComputed;
 
                         }//end queries
 
@@ -406,6 +430,29 @@ void computeRSMethods(Index* ind)
     delete qs;
     delete myMethod;
 }
+
+void initJudgDocsVector(Index *ind,vector<int>&rel , vector<int>&nonRel,string queryID)
+{
+
+        set<string> docs;
+        set<string>::iterator it;
+        int counter = 5;
+        if( queryRelDocsMap.find(queryID) != queryRelDocsMap.end() )//find it!
+        {
+            docs = queryRelDocsMap[queryID];
+            //rel.assign(docs.begin(),docs.begin() + numberOfInitRelDocs - 1 );
+            for(it = docs.begin() ; it !=docs.end() && counter-- > 0 ;++it )
+                rel.push_back(ind->document( *it));
+            if( queryNonRelDocsMap.find(queryID) != queryNonRelDocsMap.end() )//find it!
+            {
+                docs = queryNonRelDocsMap[queryID];
+                //nonRel.assign(docs.begin(),docs.begin() + numberOfInitNonRelDocs -1);
+                counter = 15;
+                for(it = docs.begin() ; it !=docs.end() && counter-- > 0 ;++it )
+                    nonRel.push_back(ind->document(*it));
+            }
+        }
+}
 void loadJudgment()
 {
     int judg,temp;
@@ -427,11 +474,17 @@ void loadJudgment()
                 queryRelDocsMap[id].insert(docName);
                 //map<string,bool>m;m.insert("ss",false)
                 //cerr<<id<<" "<<docName<<endl;
+            }else
+            {
+                queryNonRelDocsMap[id].insert(docName);
             }
+
+
         }else if(DATASET == 1)//ohsu
         {
             ss >> id >> docName;
             queryRelDocsMap[id].insert(docName);
+            //queryNonRelDocsMap[id].insert(docName); FIX ME for nonRel!!!!
         }
     }
     infile.close();
@@ -667,7 +720,7 @@ bool pairCompare(const std::pair<double, int>& firstElem, const std::pair<double
 void showNearerTerms2QueryVecInW2V(DocStream *qs,RetMethod *myMethod ,Index *ind, int avgOrMax)
 {
     ofstream inputfile;
-    inputfile.open("termsNearer2QueryWordsMaximum.txt");
+    inputfile.open("outputfiles/termsNearer2QueryWordsMaximum.txt");
 
     qs->startDocIteration();
     TextQuery *q;
@@ -811,7 +864,7 @@ void computeQueryAvgVec(Document *d,RetMethod *myMethod )
 void showNearerTermInW2V(DocStream *qs,RetMethod *myMethod ,Index *ind)
 {
     ofstream inputfile;
-    inputfile.open("similar2QueryWord.txt");
+    inputfile.open("outputfiles/similar2QueryWord.txt");
 
 
 
@@ -871,7 +924,9 @@ void showNearerTermInW2V(DocStream *qs,RetMethod *myMethod ,Index *ind)
 
             inputfile<<endl;
             delete qt;
-            simTermid.clear();qtemp.clear();dtemp.clear();
+            simTermid.clear();
+            qtemp.clear();
+            dtemp.clear();
         }
 
         delete textQR;

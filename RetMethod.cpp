@@ -38,7 +38,11 @@ extern int negGenModeHM;//0 --> coll , 1--> nonRel
 extern int feedbackMode;
 extern int updatingThresholdMode; // 0 ->no updating ,1->linear
 
+extern map<int,vector<double> >wordEmbedding;
+extern map<int,vector<double> >docIdKeyWords;
 //extern map<int, map<int,double> > FEEDBACKMAP;
+
+
 static int qid=1;
 static string RM;
 Index* myIndex = NULL;
@@ -255,20 +259,20 @@ lemur::retrieval::RetMethod::RetMethod(const Index &dbIndex,
     for(int i = 0 ;i < W2VecDimSize ; i++)
         for(int j = 0 ; j < W2VecDimSize ; j++)
         {
-            coefMatrix[i][j] = ((rand()%2000)-1000)/1000.0f;
+            coefMatrix[i][j] = ((rand()%1000)-500)/500.0f;
             //cerr<<coefMatrix[i][j]<<" ";
         }
     alphaCoef = 0.8;
     lambdaCoef = 0.05;
     betaCoef = 0.01;
-    etaCoef = 0.00001;
+    etaCoef = 0.000001;
 
     //queryAvgVec.assign(W2VecDimSize , -10.0);
     Vq.assign(W2VecDimSize , 0.0);
     Vbwn.assign(W2VecDimSize , 0.0);
     Vwn.assign(W2VecDimSize , 0.0);
 
-    numberOfSelectedTopWord = 20.0;
+    numberOfSelectedTopWord = 10.0;
 
 
 
@@ -428,61 +432,29 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
 
     //updateTextQuery(origRep,*relDocs,*nonRelDocs);
 
+    //for(int i = 0 ; i < initRel.size() ;i++)
+    //    cerr<<ind.document(initRel[i])<<"\n";
+
+
     if(nonRelComputed[nonRelJudgDoc.size()] == false)
     {
-        computeRelNonRelDist(origRep,nonRelJudgDoc,nonRelJudgDoc,false);
         nonRelComputed[nonRelJudgDoc.size()] = true;
+        nonRelJudgDoc.insert(nonRelJudgDoc.begin(),initNonRel.begin(),initNonRel.end());
+        //for(int i = 0 ; i < nonRelJudgDoc.size() ;i++)
+        //            cerr<<ind.document(nonRelJudgDoc[i])<<"\n";
+
+
+        computeRelNonRelDist(origRep,nonRelJudgDoc,nonRelJudgDoc,false,true);
+
     }else  if(relComputed[relJudgDoc.size()] == false)
     {
-        computeRelNonRelDist(origRep,relJudgDoc,relJudgDoc,true);
         relComputed[relJudgDoc.size()] = true;
+        relJudgDoc.insert(relJudgDoc.begin(),initRel.begin(),initRel.end());
+
+        computeRelNonRelDist(origRep,relJudgDoc,relJudgDoc,true,true);
+
     }
 }
-void lemur::retrieval::RetMethod::updateThreshold(lemur::api::TextQueryRep &origRep,
-                                                  vector<int> relJudgDoc ,vector<int> nonReljudgDoc , int mode,double relSumScores ,double nonRelSumScore)
-{
-    thresholdUpdatingMethod = updatingThresholdMode;
-    //double alpha = 0.3,beta = 0.9;
-    if(thresholdUpdatingMethod == 0)//no updating
-        return;
-    else if(thresholdUpdatingMethod == 1)//linear
-    {
-        if(mode == 0)//non rel passed
-        {
-            setThreshold(getThreshold()+getC1());
-            //cout<<"mode 0 "<<getThreshold()<<endl;
-        }
-        else if(mode == 1)//not showed anything
-        {
-            setThreshold( getThreshold()- getC2() );
-            //cout<<"mode 1 "<<getThreshold()<<endl;
-        }
-
-        //threshold = -4.5;
-    }else if (thresholdUpdatingMethod == 2)//diff rel nonrel method
-    {
-        double alpha = getDiffThrUpdatingParam();
-        double relSize = relJudgDoc.size();
-        double nonRelSize = nonReljudgDoc.size();
-        double val =  alpha * std::max( ((relSumScores/(relSize+1)+0.005) - (nonRelSumScore/(nonRelSize+1)+0.005)) ,-3.5) *
-                (std::abs(std::log10( (nonRelSize+1) / (relSize+1) ) + 0.005 ) );
-
-
-        if(mode == 0)
-            setThreshold(getThreshold() + val);
-        else
-            setThreshold(getThreshold() - val);
-        //cout<<relSumScores<<" "<<relSize<<endl;
-        //cout<<alpha<<" "<<(relSumScores/(relSize+1.0))<<" "<<(nonRelSumScore/nonRelSize+1)<<" "<<(std::log10( (nonRelSize+1) / (relSize+1) ) + 0.005 )<<endl;
-        cout <<"mode "<<mode<<" alpha "<<alpha <<" relSum: "<<(relSumScores/(relSize+1)+0.005)<<" nonRelSum: "<< (nonRelSumScore/(nonRelSize+1)+0.005) <<" val: "<<val<<" log: "<<std::log10( (nonRelSize+1) / (relSize+1) );
-        cout<<" thr: "<<getThreshold()<<endl;
-    }
-
-
-}
-
-extern map<int,vector<double> >wordEmbedding;
-extern map<int,vector<double> >docIdKeyWords;
 
 float lemur::retrieval::RetMethod::cosineSim(vector<double> aa, vector<double> bb)
 {
@@ -818,8 +790,140 @@ void lemur::retrieval::RetMethod::updateTextQuery(TextQueryRep &origRep,
     }
 }
 
+
+void lemur::retrieval::RetMethod::computeNearestTerm2Vec(vector<double> vec )
+{
+
+    ofstream inputfile;
+    inputfile.open("outputfiles/NearestTerm2Vec.txt",ios::app);
+
+    vector<pair<double,int> >simTermid;
+
+    for(int i =1 ; i< ind.termCountUnique() ; i++)
+    {
+
+        vector<double>dtemp;
+        if(wordEmbedding.find(i) != wordEmbedding.end())
+        {
+            dtemp.assign(wordEmbedding[i].begin() ,wordEmbedding[i].end());
+        }
+        else
+        {
+            continue;
+        }
+
+        double sim = this->cosineSim(vec,dtemp);
+        simTermid.push_back(pair<double,int>(sim,i));
+    }
+    std::sort(simTermid.begin() , simTermid.end(),pairCompare);
+
+
+    for(int i = 0 ; i < 5 ; i++)
+        inputfile <<"( "<< ind.term(simTermid[i].second)<<" , "<<simTermid[i].first<<" ) ";
+
+    inputfile<<endl<<endl;
+    inputfile.close();
+
+}
+
+
+void lemur::retrieval::RetMethod::multiplyVec2Vec(vector<double> m1, vector<vector<double> >&res )
+{
+    //cout<< endl<<W2VecDimSize<<endl;
+    for(int i = 0 ;i < W2VecDimSize ;i++)
+        for(int j = 0 ; j < W2VecDimSize ; j++)
+            res[i][j] = m1[i] * Vq[j];
+
+}
+void lemur::retrieval::RetMethod::multiplyMatrix2Vec(vector<double>&res  )
+{
+    //(N*N)^T * (1*N)^T
+    for(int j = 0 ; j < W2VecDimSize ; j++)
+        for(int k = 0 ; k < W2VecDimSize ; k++)
+        {
+            //cerr<<"j "<<j <<" k "<<k<<" m1 "<<m1[k][j]<<" m2 "<<m2[k]<<endl;
+            res[j] += coefMatrix[k][j] * Vq[k];
+        }
+    //cout<<res[50]<<endl;
+}
+
+void lemur::retrieval::RetMethod::computeCoefMatrix()
+{
+    bool isChangeSmall = false;
+    int epoch = 100000;//eta should be decreased
+    while(epoch--)
+    {
+        vector<vector<double> >wnMatrix(W2VecDimSize ,vector<double>(W2VecDimSize , 0.0));
+        vector<double>temp(W2VecDimSize ,0.0);
+        //rel
+        multiplyMatrix2Vec(temp);
+        for(int ii = 0 ; ii < W2VecDimSize; ii++)
+            temp[ii] = temp[ii] - Vwn[ii];
+        multiplyVec2Vec(temp,wnMatrix);
+        temp.clear();
+        temp.assign(W2VecDimSize,0.0);
+
+        //nonRel
+        vector<vector<double> >wnbMatrix(W2VecDimSize ,vector<double>(W2VecDimSize , 0.0));
+        multiplyMatrix2Vec(temp);
+
+        for(int ii = 0 ; ii < W2VecDimSize; ii++)
+            temp[ii] = temp[ii] - Vbwn[ii];
+        multiplyVec2Vec(temp,wnbMatrix);
+
+        //diff
+        double norm = 0;
+        for(int i = 0 ; i < W2VecDimSize ; i++)
+            for( int j = 0 ; j < W2VecDimSize ; j++ )
+            {
+                double before =coefMatrix[i][j];
+                coefMatrix[i][j] = ( coefMatrix[i][j] - etaCoef * ( alphaCoef * wnMatrix[i][j] - lambdaCoef * wnbMatrix[i][j] - betaCoef * coefMatrix[i][j] ) );
+                norm += (before - coefMatrix[i][j])*(before - coefMatrix[i][j]);
+                //cerr<<coefMatrix[i][j]<<" ";
+            }
+
+        norm = std::sqrt(norm);
+        //cout<<1e1<<" "<<1e2;
+        //cerr<<"norm : "<<norm<<endl;
+        if(norm < 0.001)
+        {
+            isChangeSmall = true;
+            vector<double> tempVq(W2VecDimSize,0.0);
+            cerr<<"Update Query Vec11111\n";
+            for(int i = 0 ; i < W2VecDimSize ; i++)
+                for(int j =0 ; j < W2VecDimSize ; j++)
+                    tempVq[i] += coefMatrix[i][j] * Vq[j];
+
+            Vq.clear();
+            Vq.assign(tempVq.begin() ,tempVq.end());
+            //Vq.assign(W2VecDimSize,0.0);
+            //Vq = tempVq;
+
+            break;
+        }
+
+    }//end epoch
+
+    if(isChangeSmall == false)
+    {
+        vector<double> tempVq(W2VecDimSize,0.0);
+        cerr<<"Update Query Vec222222\n";
+        for(int i = 0 ; i < W2VecDimSize ; i++)
+            for(int j =0 ; j < W2VecDimSize ; j++)
+                tempVq[i] += coefMatrix[i][j] * Vq[j];
+
+        //for(int i = 0 ; i < W2VecDimSize ; i++)
+        //    cerr<<Vq[i]<<" "<<tempVq[i]<<" ";
+
+        Vq.clear();
+        Vq.assign(tempVq.begin() , tempVq.end());
+        //Vq.assign(W2VecDimSize,0.0);
+        //Vq = tempVq;
+    }
+}
+
 void lemur::retrieval::RetMethod::computeRelNonRelDist(TextQueryRep &origRep,
-                                                       const vector<int> relDocs, const vector<int> nonRelDocs,bool isRelevant)
+                                                       const vector<int> relDocs, const vector<int> nonRelDocs,bool isRelevant, bool computeCoeff)
 {
     COUNT_T numTerms = ind.termCountUnique();
 
@@ -913,36 +1017,25 @@ void lemur::retrieval::RetMethod::computeRelNonRelDist(TextQueryRep &origRep,
         probWordVec.push_back(pair<double,int>(wprob,wid));
     }
 
-    //ofstream outputfile;
-    /*if(isRelevant)
-    {
-        Vwn.clear();
-        Vwn.assign(W2VecDimSize,0.0);
-        //outputfile.open("outputfiles/mixtureRelDocs.txt",ios::app);
-    }
-    else
-    {
-        Vbwn.clear();
-        Vbwn.assign(W2VecDimSize,0.0);
-        //outputfile.open("outputfiles/mixtureNonRelDocs.txt",ios::app);
-    }*/
 
     vector<int> queryWords;
     origRep.startIteration();//ehtemalan Fix Meee!!!!!!!!!!!!!!!!!!!!!!!!!
     while(origRep.hasMore())
     {
         int idd = origRep.nextTerm()->id();
-        cerr<<idd<<" ";
+        //cerr<<idd<<" ";
         queryWords.push_back(idd);
     }
-    cerr<<endl;
-
-    //vector<double> Vq(queryAvgVec);
-    //vector<double> Vwn(W2VecDimSize,0.0),Vbwn(W2VecDimSize,0.0);
 
     std::sort(probWordVec.begin(),probWordVec.end(),pairCompare);
+
+
     double wordCount = std::min((double)probWordVec.size() , numberOfSelectedTopWord);
     double negWordCount =0.0;
+
+    for(int i = 0 ; i < wordCount ; i++)
+        cerr<<ind.term(probWordVec[i].second)<<" ";
+    cerr<<endl;
 
     if(isRelevant)
     {
@@ -985,7 +1078,6 @@ void lemur::retrieval::RetMethod::computeRelNonRelDist(TextQueryRep &origRep,
                 }
             }
         }
-
     }
     if(isRelevant)
         for(int i=0 ;i < W2VecDimSize ; i++)
@@ -996,8 +1088,52 @@ void lemur::retrieval::RetMethod::computeRelNonRelDist(TextQueryRep &origRep,
 
 
     //outputfile.close();
+#define TEST 0
+#if TEST
+    ofstream inputfile;
+    inputfile.open("outputfiles/NearestTerm2Vec.txt");
 
-    computeCoefMatrix();
+    origRep.startIteration();//ehtemalan Fix Meee!!!!!!!!!!!!!!!!!!!!!!!!!
+    while(origRep.hasMore())
+    {
+        int idd = origRep.nextTerm()->id();
+        inputfile<<ind.term(idd)<<" ";
+    }
+    inputfile<<":"<<endl;
+    inputfile.close();
+
+
+
+#endif
+
+    if(computeCoeff)
+    {
+        //computeNearestTerm2Vec(Vq);
+        //computeNearestTerm2Vec(Vwn);
+        //computeNearestTerm2Vec(Vbwn);
+
+        computeCoefMatrix();
+
+        //computeNearestTerm2Vec(Vq);
+    }
+    else
+    {
+        for(int i = 0 ;i < W2VecDimSize ;i++)
+            cout<<Vwn[i]<<" ";
+
+        cout<<endl;
+        for(int i = 0 ;i < W2VecDimSize ;i++)
+            cout<<Vbwn[i]<<" ";
+        cout<<endl;
+    }
+
+
+#if TEST
+    //inputfile<<"AFTER Coef Multiplication :\n";
+    //computeNearestTerm2Vec(Vq);
+    //cout<<endl;
+    //computeNearestTerm2Vec(wordEmbedding[ind.term("dope")]);
+#endif
 
     delete fblm;
     delete dCounter;
@@ -1006,98 +1142,49 @@ void lemur::retrieval::RetMethod::computeRelNonRelDist(TextQueryRep &origRep,
 
 }
 
-
-void lemur::retrieval::RetMethod::multiplyVec2Vec(vector<double> m1, vector<vector<double> >&res )
+void lemur::retrieval::RetMethod::updateThreshold(lemur::api::TextQueryRep &origRep,
+                                                  vector<int> relJudgDoc ,vector<int> nonReljudgDoc , int mode,double relSumScores ,double nonRelSumScore)
 {
-    //cout<< endl<<W2VecDimSize<<endl;
-    for(int i = 0 ;i < W2VecDimSize ;i++)
-        for(int j = 0 ; j < W2VecDimSize ; j++)
-            res[i][j] = m1[i] * Vq[j];
-
-}
-void lemur::retrieval::RetMethod::multiplyMatrix2Vec(vector<double>&res  )
-{
-    //(N*N)^T * (1*N)^T
-    for(int j = 0 ; j < W2VecDimSize ; j++)
-        for(int k = 0 ; k < W2VecDimSize ; k++)
-        {
-            //cerr<<"j "<<j <<" k "<<k<<" m1 "<<m1[k][j]<<" m2 "<<m2[k]<<endl;
-            res[j] += coefMatrix[k][j] * Vq[k];
-        }
-    //cout<<res[50]<<endl;
-}
-void lemur::retrieval::RetMethod::computeCoefMatrix()
-{
-    bool isChangeSmall = false;
-    int epoch = 1000;//eta should be decreased
-    while(epoch--)
+    thresholdUpdatingMethod = updatingThresholdMode;
+    //double alpha = 0.3,beta = 0.9;
+    if(thresholdUpdatingMethod == 0)//no updating
+        return;
+    else if(thresholdUpdatingMethod == 1)//linear
     {
-        vector<vector<double> >wnMatrix(W2VecDimSize ,vector<double>(W2VecDimSize , 0.0));
-        vector<double>temp(W2VecDimSize ,0.0);
-        //rel
-        multiplyMatrix2Vec(temp);
-        for(int ii = 0 ; ii < W2VecDimSize; ii++)
-            temp[ii] = temp[ii] - Vwn[ii];
-        multiplyVec2Vec(temp,wnMatrix);
-        temp.clear();
-        temp.assign(W2VecDimSize,0.0);
-
-        //nonRel
-        vector<vector<double> >wnbMatrix(W2VecDimSize ,vector<double>(W2VecDimSize , 0.0));
-        multiplyMatrix2Vec(temp);
-
-        for(int ii = 0 ; ii < W2VecDimSize; ii++)
-            temp[ii] = temp[ii] - Vbwn[ii];
-        multiplyVec2Vec(temp,wnbMatrix);
-
-        //diff
-        double norm = 0;
-        for(int i = 0 ; i < W2VecDimSize ; i++)
-            for( int j = 0 ; j < W2VecDimSize ; j++ )
-            {
-                double before =coefMatrix[i][j];
-                coefMatrix[i][j] = ( coefMatrix[i][j] - etaCoef * ( alphaCoef * wnMatrix[i][j] - lambdaCoef * wnbMatrix[i][j] - betaCoef * coefMatrix[i][j] ) );
-                norm += (before - coefMatrix[i][j])*(before - coefMatrix[i][j]);
-                //cerr<<coefMatrix[i][j]<<" ";
-            }
-
-        norm = std::sqrt(norm);
-        //cout<<1e1<<" "<<1e2;
-        cout<<"norm : "<<norm<<endl;
-        if(norm < 0.001)
+        if(mode == 0)//non rel passed
         {
-            isChangeSmall = true;
-            vector<double> tempVq(W2VecDimSize,0.0);
-            cerr<<"Update Query Vec11111\n";
-            for(int i = 0 ; i < W2VecDimSize ; i++)
-                for(int j =0 ; j < W2VecDimSize ; j++)
-                    tempVq[i] += coefMatrix[i][j] * Vq[j];
-
-            Vq.clear();
-            Vq.assign(W2VecDimSize,0.0);
-            Vq = tempVq;
-
-            break;
+            setThreshold(getThreshold()+getC1());
+            //cout<<"mode 0 "<<getThreshold()<<endl;
+        }
+        else if(mode == 1)//not showed anything
+        {
+            setThreshold( getThreshold()- getC2() );
+            //cout<<"mode 1 "<<getThreshold()<<endl;
         }
 
-    }//end epoch
-
-    if(isChangeSmall == false)
+        //threshold = -4.5;
+    }else if (thresholdUpdatingMethod == 2)//diff rel nonrel method
     {
-        vector<double> tempVq(W2VecDimSize,0.0);
-        cerr<<"Update Query Vec222222\n";
-        for(int i = 0 ; i < W2VecDimSize ; i++)
-            for(int j =0 ; j < W2VecDimSize ; j++)
-                tempVq[i] += coefMatrix[i][j] * Vq[j];
+        double alpha = getDiffThrUpdatingParam();
+        double relSize = relJudgDoc.size();
+        double nonRelSize = nonReljudgDoc.size();
+        double val =  alpha * std::max( ((relSumScores/(relSize+1)+0.005) - (nonRelSumScore/(nonRelSize+1)+0.005)) ,-3.5) *
+                (std::abs(std::log10( (nonRelSize+1) / (relSize+1) ) + 0.005 ) );
 
-        for(int i = 0 ; i < W2VecDimSize ; i++)
-            cerr<<Vq[i]<<" "<<tempVq[i]<<" ";
 
-        Vq.clear();
-        Vq.assign(W2VecDimSize,0.0);
-        Vq = tempVq;
+        if(mode == 0)
+            setThreshold(getThreshold() + val);
+        else
+            setThreshold(getThreshold() - val);
+        //cout<<relSumScores<<" "<<relSize<<endl;
+        //cout<<alpha<<" "<<(relSumScores/(relSize+1.0))<<" "<<(nonRelSumScore/nonRelSize+1)<<" "<<(std::log10( (nonRelSize+1) / (relSize+1) ) + 0.005 )<<endl;
+        cout <<"mode "<<mode<<" alpha "<<alpha <<" relSum: "<<(relSumScores/(relSize+1)+0.005)<<" nonRelSum: "<< (nonRelSumScore/(nonRelSize+1)+0.005) <<" val: "<<val<<" log: "<<std::log10( (nonRelSize+1) / (relSize+1) );
+        cout<<" thr: "<<getThreshold()<<endl;
     }
+
+
 }
+
 
 void lemur::retrieval::RetMethod::computeMixtureFBModel(QueryModel &origRep,
                                                         const DocIDSet &relDocs, const DocIDSet &nonRelDocs )

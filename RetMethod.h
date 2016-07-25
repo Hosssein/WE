@@ -582,8 +582,6 @@ protected:
 
     mutable int DNsize ;
 
-
-
     lemur::api::IndexedRealVector *qm;
     const lemur::api::Index &ind;
 };
@@ -953,11 +951,11 @@ protected:
                            const lemur::api::DocIDSet & relDocs);
 
 
-    void computeRelNonRelDist(TextQueryRep &origRep,
-                              const vector<int> relDocs, const vector<int> nonRelDocs, bool isRelevant); //!!!
+
     void multiplyMatrix2Vec(vector<double> &res );
     void multiplyVec2Vec(vector<double> m1,  vector<vector<double> >&res );
     void computeCoefMatrix();
+    void computeNearestTerm2Vec(vector<double>);
     //@}
 
     RetParameter::DocSmoothParam docParam;
@@ -968,6 +966,9 @@ protected:
     const string supportFile;
 
 public:
+    void computeRelNonRelDist(TextQueryRep &origRep,
+                              const vector<int> relDocs, const vector<int> nonRelDocs, bool isRelevant, bool computeCoeff); //!!!
+
     bool *relComputed;
     bool *nonRelComputed;
     int W2VecDimSize;
@@ -978,6 +979,10 @@ public:
     //vector<double> queryAvgVec;
     vector<double> Vq, Vwn ,Vbwn;
     double numberOfSelectedTopWord;
+
+
+    vector<int> initRel;
+    vector<int> initNonRel;
 };
 
 
