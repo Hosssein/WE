@@ -54,6 +54,7 @@ void computeQueryAvgVec(Document *d,RetMethod *myMethod );
 void computeMixtureForDocsAndWriteToFile(Index *ind,RetMethod *myMethod);
 void readDocIdKeyWords();
 void initJudgDocsVector(Index* ind,vector<int>&rel , vector<int>&nonRel,string queryID);
+void readStopWord(Index *ind);
 
 extern double startThresholdHM , endThresholdHM , intervalThresholdHM ;
 extern int WHO;// 0--> server , 1-->Mozhdeh, 2-->AP, other-->Hossein
@@ -75,7 +76,7 @@ string judgmentPath,indexPath,queryPath;
 string resultPath = "";
 map<int,vector<double> >wordEmbedding;
 map<int ,vector<double> >docIdKeyWords;
-
+set<int> stopWords;
 
 //int numberOfInitRelDocs = 5;
 //int numberOfInitNonRelDocs = 15;
@@ -135,9 +136,12 @@ int main(int argc, char * argv[])
     //writeDocs2File(ind);
 
 
+    readStopWord(ind);
+
     readWordEmbeddingFile(ind);
     loadJudgment();
     computeRSMethods(ind);
+
 
 }
 
@@ -147,9 +151,8 @@ void computeRSMethods(Index* ind)
     ArrayAccumulator accumulator(ind->docCount());
     RetMethod *myMethod = new RetMethod(*ind,"",accumulator);
 
-
     //computeMixtureForDocsAndWriteToFile(ind,myMethod);
-    readDocIdKeyWords();
+    //readDocIdKeyWords();
 
     //showNearerTermInW2V(qs,myMethod,ind);
     //showNearerTerms2QueryVecInW2V(qs,myMethod,ind,1);
@@ -181,22 +184,22 @@ void computeRSMethods(Index* ind)
         //    for(myMethod->lambdaCoef = 0.1;myMethod->lambdaCoef < 1; myMethod->lambdaCoef +=0.2)
         //    {
 
-        //for(double c1 = 0.001 ; c1<=0.21 ;c1+=0.002)//inc
-        double c1 = 0.01;
+        for(double c1 = 0.001 ; c1<=0.21 ;c1+=0.002)//inc
+        //double c1 = 0.01;
         {
             myMethod->setC1(c1);
-            //for(double c2 = 0.001 ; c2 <= 0.1 ; c2+=0.002)//dec
-            double c2 = 0.002;
+            for(double c2 = 0.001 ; c2 <= 0.1 ; c2+=0.002)//dec
+            //double c2 = 0.002;
             {
                 //myMethod->setThreshold(init_thr);
                 myMethod->setC2(c2);
 
-                //for(int numOfShownNonRel =2;numOfShownNonRel< 12;numOfShownNonRel+=1 )
-                int numOfShownNonRel = 2;
+                for(int numOfShownNonRel =2;numOfShownNonRel< 12;numOfShownNonRel+=1 )
+                //int numOfShownNonRel = 2;
                 {
 
-                    //for(int numOfnotShownDoc = 200 ;numOfnotShownDoc <= 1301 ; numOfnotShownDoc+=100)
-                    int numOfnotShownDoc = 200;
+                    for(int numOfnotShownDoc = 200 ;numOfnotShownDoc <= 1301 ; numOfnotShownDoc+=100)
+                    //int numOfnotShownDoc = 200;
                     {
                         myMethod->setThreshold(thresh);
 
@@ -242,12 +245,13 @@ void computeRSMethods(Index* ind)
                             cout<<"qid: "<<q->id()<<endl;
 
 
-                           ///*******************************************************///
+                            ///*******************************************************///
                             vector<int> rell,nonrell;
                             //cerr<<"before: "<<myMethod->initRel.size() <<" "<<myMethod->initNonRel.size()<<endl;
                             initJudgDocsVector(ind ,rell ,nonrell, q->id());
 
-                            myMethod->initNonRel.clear();myMethod->initRel.clear();
+                            myMethod->initNonRel.clear();
+                            myMethod->initRel.clear();
 
                             myMethod->initNonRel.assign(nonrell.begin(), nonrell.end() );
                             myMethod->initRel.assign(rell.begin() , rell.end() );
@@ -256,8 +260,8 @@ void computeRSMethods(Index* ind)
 
                             computeQueryAvgVec(d,myMethod);
 
-                            myMethod->computeRelNonRelDist(*((TextQueryRep *)(qr)),rell,nonrell,false,false);
-                            myMethod->computeRelNonRelDist(*((TextQueryRep *)(qr)),rell,nonrell,true,false);
+                            //myMethod->computeRelNonRelDist(*((TextQueryRep *)(qr)),rell,nonrell,false,false);
+                            //myMethod->computeRelNonRelDist(*((TextQueryRep *)(qr)),rell,nonrell,true,false);
                             ///*******************************************************///
 
                             bool newNonRel = false , newRel = false;
@@ -273,18 +277,15 @@ void computeRSMethods(Index* ind)
                             }
 
 
-                            //FIX ME DELETE relcomputed!!!!!!!!!!!!!!!!!!
-                            myMethod->relComputed = new bool[relDocs.size()];
-                            for(int ii =0; ii < relDocs.size(); ii++)
+                            myMethod->relComputed = new bool[200];
+                            myMethod->nonRelComputed = new bool[200];
+                            for(int ii = 0; ii < 200; ii++)
+                            {
                                 myMethod->relComputed[ii]=false;
-
-                            myMethod->nonRelComputed = new bool[relDocs.size()*10];//FIX ME!!!!!!!!!!!!!!!!!!
-                            for(int ii =0; ii < 10*relDocs.size(); ii++)
                                 myMethod->nonRelComputed[ii]=false;
-
+                            }
 
                             //for(int docID = 1 ; docID < ind->docCount() ; docID++){ //compute for all doc
-
                             vector<int> docids = queryDocList(ind,((TextQueryRep *)(qr)));
 
                             cout<<"reldocsize: "<<relDocs.size()<<endl;
@@ -298,6 +299,7 @@ void computeRSMethods(Index* ind)
 
                                 if(sim >=  myMethod->getThreshold() )
                                 {
+                                    //cerr<<sim<<"\n";
                                     numberOfNotShownDocs=0;
                                     bool isRel = false;
 
@@ -327,6 +329,8 @@ void computeRSMethods(Index* ind)
 #if 1//FBMODE
                                     //if(relJudgDocs.size()==5 )
                                     myMethod->updateProfile(*((TextQueryRep *)(qr)),relJudgDocs , nonRelJudgDocs );
+                                    //float sim2 = myMethod->computeProfDocSim(((TextQueryRep *)(qr)) ,docID, relJudgDocs , nonRelJudgDocs , newNonRel,newRel);
+                                    //cerr<<"sim before: "<<sim<<" after prof updating: "<< sim2<<endl;
 #endif
 #if UPDTHRMODE == 1
                                     if(!isRel)
@@ -434,24 +438,24 @@ void computeRSMethods(Index* ind)
 void initJudgDocsVector(Index *ind,vector<int>&rel , vector<int>&nonRel,string queryID)
 {
 
-        set<string> docs;
-        set<string>::iterator it;
-        int counter = 5;
-        if( queryRelDocsMap.find(queryID) != queryRelDocsMap.end() )//find it!
+    set<string> docs;
+    set<string>::iterator it;
+    int counter = 5;
+    if( queryRelDocsMap.find(queryID) != queryRelDocsMap.end() )//find it!
+    {
+        docs = queryRelDocsMap[queryID];
+        //rel.assign(docs.begin(),docs.begin() + numberOfInitRelDocs - 1 );
+        for(it = docs.begin() ; it !=docs.end() && counter-- > 0 ;++it )
+            rel.push_back(ind->document( *it));
+        if( queryNonRelDocsMap.find(queryID) != queryNonRelDocsMap.end() )//find it!
         {
-            docs = queryRelDocsMap[queryID];
-            //rel.assign(docs.begin(),docs.begin() + numberOfInitRelDocs - 1 );
+            docs = queryNonRelDocsMap[queryID];
+            //nonRel.assign(docs.begin(),docs.begin() + numberOfInitNonRelDocs -1);
+            counter = 10;
             for(it = docs.begin() ; it !=docs.end() && counter-- > 0 ;++it )
-                rel.push_back(ind->document( *it));
-            if( queryNonRelDocsMap.find(queryID) != queryNonRelDocsMap.end() )//find it!
-            {
-                docs = queryNonRelDocsMap[queryID];
-                //nonRel.assign(docs.begin(),docs.begin() + numberOfInitNonRelDocs -1);
-                counter = 15;
-                for(it = docs.begin() ; it !=docs.end() && counter-- > 0 ;++it )
-                    nonRel.push_back(ind->document(*it));
-            }
+                nonRel.push_back(ind->document(*it));
         }
+    }
 }
 void loadJudgment()
 {
@@ -688,8 +692,8 @@ void readWordEmbeddingFile(Index *ind)
 
         //if(termID == 0)
         //{
-            //cout<<sub<<" ";
-            //continue;
+        //cout<<sub<<" ";
+        //continue;
         //}
         while (iss>>dd)
             wordEmbedding[termID].push_back(dd);
@@ -851,9 +855,9 @@ void computeQueryAvgVec(Document *d,RetMethod *myMethod )
         queryAvg[i] /= (double)(queryTerms.size());
 
     myMethod->Vq.clear();
-    myMethod->Vq.assign(myMethod->W2VecDimSize ,0.0);
-    myMethod->Vq = queryAvg;
-
+    //myMethod->Vq.assign(myMethod->W2VecDimSize ,0.0);
+    //myMethod->Vq = queryAvg;
+    myMethod->Vq.assign( queryAvg.begin(),queryAvg.end());
 
     delete qr;
     delete q;
@@ -936,13 +940,34 @@ void showNearerTermInW2V(DocStream *qs,RetMethod *myMethod ,Index *ind)
     }
     inputfile<<endl;
     inputfile.close();
-
-
 }
 
+void readStopWord(Index *ind)
+{
+    string mterm;
+    ifstream input("stops_en.txt");
+    if(input.is_open())
+    {
+        int cc=0;
+        while(getline(input,mterm))
+        {
+            cc++;
+            //std::cout<<mterm<<" aaa ";
+            if(mterm.size()>1)
+                mterm.erase(mterm.size()-1,mterm.size());
+            //std::cout<<" ttt "<<mterm<<endl;
+            stopWords.insert( ind->term(mterm) );
+        }
+        cout<<cc<<" SW size: "<<stopWords.size()<<endl;
 
+        input.close();
+    }else
+    {
+        cerr<<"FILE NOT OPENED";
+    }
+    stopWords.erase(stopWords.find(0));
 
-
+}
 
 #if 0
 #include "pugixml.hpp"

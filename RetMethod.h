@@ -639,10 +639,10 @@ public:
 
         double dsc = log(dRep->scoreConstant());//log(a(d))
 
-        double cql = qm->colQueryLikelihood();//sigma(c(w,q)*P(w|C))
+        double cql = qm->colQueryLikelihood();// sigma(c(w,q)*P(w|C))//sigma(p(Wq|C)
         // real query likelihood
 
-        double s = dsc * qsc + origScore + cql;
+        double s = dsc * qsc + origScore + cql; // s = log(P(q|d))
 
         double qsNorm = origScore/qsc;
 
@@ -720,7 +720,10 @@ public:
 
     virtual float cosineSim(vector<double> aa, vector<double> bb);
 
+
+
     virtual vector<double> extractKeyWord(int newDocId);
+
 
     double fangScore( DocIDSet &fbDocs, int docID, bool newNonRel)
     {
@@ -809,15 +812,15 @@ public:
                                            docParam.DirPrior,
                                            docParam.smthStrategy);
 
-       // for (int i=1; i<=numTerms; i++) {
-         //   if (distQuery[i] > 0) {
+        // for (int i=1; i<=numTerms; i++) {
+        //   if (distQuery[i] > 0) {
         for(map<int,double>::iterator it = prev_distQuery.begin(); it!= prev_distQuery.end() ; it++){
-                int tf=0 ;
-                hfv.find(it->first,tf);
-                fang_score+= it->second * log (it->second/dm->seenProb(tf, it->first));
-            }
-                //lmCounter.incCount(i, distQuery[i]);
-           // }
+            int tf=0 ;
+            hfv.find(it->first,tf);
+            fang_score+= it->second * log (it->second/dm->seenProb(tf, it->first));
+        }
+        //lmCounter.incCount(i, distQuery[i]);
+        // }
         //}
 
         delete dm;
@@ -886,6 +889,7 @@ public:
 
 
 protected:
+
     bool newNonRelRecieved,newRelRecieved;
     int newNonRelRecievedCnt,newRelRecievedCnt;
 
@@ -977,8 +981,9 @@ public:
     //vector<vector<double> >coefMatrix(100,vector<double>(100));
     vector<vector<double> >coefMatrix;
     //vector<double> queryAvgVec;
-    vector<double> Vq, Vwn ,Vbwn;
-    double numberOfSelectedTopWord;
+    vector<double> Vq;
+    vector<vector<double> > Vwn ,Vbwn;
+    double numberOfPositiveSelectedTopWord,numberOfNegativeSelectedTopWord;
 
 
     vector<int> initRel;
