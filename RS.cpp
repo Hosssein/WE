@@ -161,7 +161,7 @@ void computeRSMethods(Index* ind)
 
     string outFilename;
     if(DATASET == 0)
-        outFilename =outputFileNameHM+"_infile_WE_W2V_2-200";
+        outFilename =outputFileNameHM+"_infile_NOWE_5-700";
     else if (DATASET == 1)
         outFilename =outputFileNameHM+"_ohsu";
 
@@ -184,27 +184,27 @@ void computeRSMethods(Index* ind)
         //    for(myMethod->lambdaCoef = 0.1;myMethod->lambdaCoef < 1; myMethod->lambdaCoef +=0.2)
         //    {
 
-        for(double c1 = 0.001 ; c1<=0.21 ;c1+=0.002)//inc
+        for(double c1 = 0.05 ; c1<=0.6 ;c1+=0.05)//inc
         //double c1 = 0.01;
         {
             myMethod->setC1(c1);
-            for(double c2 = 0.001 ; c2 <= 0.1 ; c2+=0.002)//dec
+            for(double c2 = 0.05 ; c2 <= 0.6 ; c2+=0.05)//dec
             //double c2 = 0.002;
             {
                 //myMethod->setThreshold(init_thr);
                 myMethod->setC2(c2);
 
-                for(int numOfShownNonRel =2;numOfShownNonRel< 12;numOfShownNonRel+=1 )
-                //int numOfShownNonRel = 2;
+                //for(int numOfShownNonRel =5;numOfShownNonRel< 12;numOfShownNonRel+=2 )
+                int numOfShownNonRel = 5;
                 {
 
-                    for(int numOfnotShownDoc = 200 ;numOfnotShownDoc <= 1301 ; numOfnotShownDoc+=100)
-                    //int numOfnotShownDoc = 200;
+                   //for(int numOfnotShownDoc = 200 ;numOfnotShownDoc <= 1401 ; numOfnotShownDoc+=200)
+                    int numOfnotShownDoc = 700;
                     {
                         myMethod->setThreshold(thresh);
 
                         cout<<"c1: "<<c1<<" c2: "<<c2<<" numOfShownNonRel: "<<numOfShownNonRel<<" numOfnotShownDoc: "<<numOfnotShownDoc<<" "<<endl;
-                        resultPath = resultFileNameHM.c_str() +numToStr( myMethod->getThreshold() )+"_c1:"+numToStr(c1)+"_c2:"+numToStr(c2)+"_#showNonRel:"+numToStr(numOfShownNonRel)+"_#notShownDoc:"+numToStr(numOfnotShownDoc)+".resW2V";
+                        resultPath = resultFileNameHM.c_str() +numToStr( myMethod->getThreshold() )+"_c1:"+numToStr(c1)+"_c2:"+numToStr(c2)+"_#showNonRel:"+numToStr(numOfShownNonRel)+"_#notShownDoc:"+numToStr(numOfnotShownDoc)+".res";
 
 
                         //myMethod->setThreshold(thresh);
@@ -326,7 +326,7 @@ void computeRSMethods(Index* ind)
                                         break;
                                     }
 
-#if 1//FBMODE
+#if 0//FBMODE
                                     //if(relJudgDocs.size()==5 )
                                     myMethod->updateProfile(*((TextQueryRep *)(qr)),relJudgDocs , nonRelJudgDocs );
                                     //float sim2 = myMethod->computeProfDocSim(((TextQueryRep *)(qr)) ,docID, relJudgDocs , nonRelJudgDocs , newNonRel,newRel);
