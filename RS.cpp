@@ -161,11 +161,12 @@ void computeRSMethods(Index* ind)
 
     string outFilename;
     if(DATASET == 0)
-        outFilename =outputFileNameHM+"_infile_NOWE_5-700";
+        outFilename =outputFileNameHM+"_infile";
     else if (DATASET == 1)
         outFilename =outputFileNameHM+"_ohsu";
 
 
+    outFilename += "#topPosW:"+numToStr(myMethod->numberOfPositiveSelectedTopWord)+"#topNegW:"+numToStr(myMethod->numberOfNegativeSelectedTopWord);
     ofstream out(outFilename.c_str());
 
 
@@ -184,13 +185,15 @@ void computeRSMethods(Index* ind)
         //    for(myMethod->lambdaCoef = 0.1;myMethod->lambdaCoef < 1; myMethod->lambdaCoef +=0.2)
         //    {
 
-        for(double c1 = 0.05 ; c1<=0.6 ;c1+=0.05)//inc
-        //double c1 = 0.01;
+        for(double c1 = 0.05 ; c1<=0.5 ;c1+=0.05)//inc
+        //double c1 = 0.1;
         {
             myMethod->setC1(c1);
-            for(double c2 = 0.05 ; c2 <= 0.6 ; c2+=0.05)//dec
-            //double c2 = 0.002;
+            for(double c2 = 0.01 ; c2 <= 0.2 ; c2+=0.03)//dec
+            //double c2 = 0.05;
             {
+                if(c2 > c1)
+                    break;
                 //myMethod->setThreshold(init_thr);
                 myMethod->setC2(c2);
 
@@ -204,7 +207,7 @@ void computeRSMethods(Index* ind)
                         myMethod->setThreshold(thresh);
 
                         cout<<"c1: "<<c1<<" c2: "<<c2<<" numOfShownNonRel: "<<numOfShownNonRel<<" numOfnotShownDoc: "<<numOfnotShownDoc<<" "<<endl;
-                        resultPath = resultFileNameHM.c_str() +numToStr( myMethod->getThreshold() )+"_c1:"+numToStr(c1)+"_c2:"+numToStr(c2)+"_#showNonRel:"+numToStr(numOfShownNonRel)+"_#notShownDoc:"+numToStr(numOfnotShownDoc)+".res";
+                        resultPath = resultFileNameHM.c_str() +numToStr( myMethod->getThreshold() )+"_c1:"+numToStr(c1)+"_c2:"+numToStr(c2)+"_#showNonRel:"+numToStr(numOfShownNonRel)+"_#notShownDoc:"+numToStr(numOfnotShownDoc)+"#topPosW:"+numToStr(myMethod->numberOfPositiveSelectedTopWord)+"#topNegW:"+numToStr(myMethod->numberOfNegativeSelectedTopWord)+".res";
 
 
                         //myMethod->setThreshold(thresh);
@@ -246,6 +249,7 @@ void computeRSMethods(Index* ind)
 
 
                             ///*******************************************************///
+#if 1
                             vector<int> rell,nonrell;
                             //cerr<<"before: "<<myMethod->initRel.size() <<" "<<myMethod->initNonRel.size()<<endl;
                             initJudgDocsVector(ind ,rell ,nonrell, q->id());
@@ -262,6 +266,7 @@ void computeRSMethods(Index* ind)
 
                             //myMethod->computeRelNonRelDist(*((TextQueryRep *)(qr)),rell,nonrell,false,false);
                             //myMethod->computeRelNonRelDist(*((TextQueryRep *)(qr)),rell,nonrell,true,false);
+#endif
                             ///*******************************************************///
 
                             bool newNonRel = false , newRel = false;
@@ -326,7 +331,7 @@ void computeRSMethods(Index* ind)
                                         break;
                                     }
 
-#if 0//FBMODE
+#if 1//FBMODE
                                     //if(relJudgDocs.size()==5 )
                                     myMethod->updateProfile(*((TextQueryRep *)(qr)),relJudgDocs , nonRelJudgDocs );
                                     //float sim2 = myMethod->computeProfDocSim(((TextQueryRep *)(qr)) ,docID, relJudgDocs , nonRelJudgDocs , newNonRel,newRel);

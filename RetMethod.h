@@ -719,6 +719,7 @@ public:
     virtual float computeProfDocSim(lemur::api::TextQueryRep *origRep,int docID ,vector<int>relDocs ,vector<int>nonRelDocs , bool newNonRel,bool newRel);
 
     virtual float cosineSim(vector<double> aa, vector<double> bb);
+    virtual float softMaxFunc(vector<double> aa, vector<double> bb);
 
 
 

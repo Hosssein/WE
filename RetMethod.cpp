@@ -434,6 +434,7 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
                                                 vector<int> relJudgDoc ,vector<int> nonRelJudgDoc)
 {
 #if 1
+    //cerr<<relJudgDoc.size()<<" "<<nonRelJudgDoc.size()<<endl;
     relJudgDoc.insert(relJudgDoc.end(),initRel.begin(),initRel.end());
     nonRelJudgDoc.insert(nonRelJudgDoc.end(),initNonRel.begin(),initNonRel.end());
 
@@ -456,7 +457,10 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
             if( stopWords.find(eventInd) == endit )//is not stopword
             {
                 vector<double>tt = wordEmbedding[eventInd];
+
                 float sc = cosineSim(Vq , tt);
+                //float sc = softMaxFunc(Vq , tt);
+
                 probWordVec.push_back(pair<double,int>(sc,eventInd));
             }
         }
@@ -484,8 +488,14 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
 
     COUNT_T numTerms = ind.termCountUnique();
     lemur::utility::ArrayCounter<double> lmCounter(numTerms+1);
-    for (int i = 0; i <= numberOfPositiveSelectedTopWord; i++)
+
+    int countPos = min((int)numberOfPositiveSelectedTopWord , (int)probWordVec.size());
+    for (int i = 0; i < countPos; i++)
+    {
+        //cerr<<probWordVec[i].second;
+        //cerr<<" "<<probWordVec[i].first<<" ";
         lmCounter.incCount(probWordVec[i].second , probWordVec[i].first);
+    }
 
     QueryModel *qr = dynamic_cast<QueryModel *> (&origRep);
     lemur::langmod::MLUnigramLM *fblm = new lemur::langmod::MLUnigramLM(lmCounter, ind.termLexiconID());
@@ -529,6 +539,10 @@ float lemur::retrieval::RetMethod::cosineSim(vector<double> aa, vector<double> b
 
     return (numerator /denominator) ;
 
+}
+float lemur::retrieval::RetMethod::softMaxFunc(vector<double> aa, vector<double> bb)
+{
+    return exp(cosineSim(aa,bb));
 }
 
 vector<double> lemur::retrieval::RetMethod::extractKeyWord(int newDocId)
