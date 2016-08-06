@@ -166,7 +166,9 @@ void computeRSMethods(Index* ind)
         outFilename =outputFileNameHM+"_ohsu";
 
 
+    outFilename += "NoFB";
     outFilename += "#topPosW:"+numToStr(myMethod->numberOfPositiveSelectedTopWord)+"#topNegW:"+numToStr(myMethod->numberOfNegativeSelectedTopWord);
+
     ofstream out(outFilename.c_str());
 
 
@@ -177,6 +179,7 @@ void computeRSMethods(Index* ind)
     double start_thresh =startThresholdHM, end_thresh= endThresholdHM;
 
     for (double thresh = start_thresh ; thresh<=end_thresh ; thresh += intervalThresholdHM)
+        for(double fbCoef = 0.1 ; fbCoef <=0.95 ; fbCoef+=0.1)
     {
         //for(myMethod->alphaCoef = 0.1;myMethod->alphaCoef < 1; myMethod->alphaCoef+=0.2)
         //{
@@ -185,15 +188,15 @@ void computeRSMethods(Index* ind)
         //    for(myMethod->lambdaCoef = 0.1;myMethod->lambdaCoef < 1; myMethod->lambdaCoef +=0.2)
         //    {
 
-        for(double c1 = 0.05 ; c1<=0.5 ;c1+=0.05)//inc
-        //double c1 = 0.1;
+        //for(double c1 = 0.05 ; c1<=0.5 ;c1+=0.05)//inc
+        double c1 = 0.4;
         {
             myMethod->setC1(c1);
-            for(double c2 = 0.01 ; c2 <= 0.2 ; c2+=0.03)//dec
-            //double c2 = 0.05;
+            //for(double c2 = 0.01 ; c2 <= 0.2 ; c2+=0.03)//dec
+            double c2 = 0.1;
             {
-                if(c2 > c1)
-                    break;
+                //if(c2 > c1)
+                //    break;
                 //myMethod->setThreshold(init_thr);
                 myMethod->setC2(c2);
 
@@ -207,8 +210,8 @@ void computeRSMethods(Index* ind)
                         myMethod->setThreshold(thresh);
 
                         cout<<"c1: "<<c1<<" c2: "<<c2<<" numOfShownNonRel: "<<numOfShownNonRel<<" numOfnotShownDoc: "<<numOfnotShownDoc<<" "<<endl;
-                        resultPath = resultFileNameHM.c_str() +numToStr( myMethod->getThreshold() )+"_c1:"+numToStr(c1)+"_c2:"+numToStr(c2)+"_#showNonRel:"+numToStr(numOfShownNonRel)+"_#notShownDoc:"+numToStr(numOfnotShownDoc)+"#topPosW:"+numToStr(myMethod->numberOfPositiveSelectedTopWord)+"#topNegW:"+numToStr(myMethod->numberOfNegativeSelectedTopWord)+".res";
-
+                        resultPath = resultFileNameHM.c_str() +numToStr( myMethod->getThreshold() )+"_c1:"+numToStr(c1)+"_c2:"+numToStr(c2)+"_#showNonRel:"+numToStr(numOfShownNonRel)+"_#notShownDoc:"+numToStr(numOfnotShownDoc)+"#topPosW:"+numToStr(myMethod->numberOfPositiveSelectedTopWord)+"#topNegW:"+numToStr(myMethod->numberOfNegativeSelectedTopWord);
+                        resultPath += "fbCoef:"+numToStr(fbCoef)+".res";
 
                         //myMethod->setThreshold(thresh);
                         out<<"threshold: "<<thresh<<endl ;
@@ -231,6 +234,8 @@ void computeRSMethods(Index* ind)
                             //myMethod->clearPrevDistQuery();
 
                             myMethod->setThreshold(thresh);
+                            myMethod->setCoeffParam(fbCoef);
+
                             double relSumScores =0.0,nonRelSumScores = 0.0;
 
                             int numberOfNotShownDocs = 0,numberOfShownNonRelDocs = 0;
@@ -250,7 +255,7 @@ void computeRSMethods(Index* ind)
 
                             ///*******************************************************///
 #if 1
-                            vector<int> rell,nonrell;
+                            /*vector<int> rell,nonrell;
                             //cerr<<"before: "<<myMethod->initRel.size() <<" "<<myMethod->initNonRel.size()<<endl;
                             initJudgDocsVector(ind ,rell ,nonrell, q->id());
 
@@ -260,7 +265,7 @@ void computeRSMethods(Index* ind)
                             myMethod->initNonRel.assign(nonrell.begin(), nonrell.end() );
                             myMethod->initRel.assign(rell.begin() , rell.end() );
                             //cerr<<"after: "<<myMethod->initRel.size() <<" "<<myMethod->initNonRel.size()<<endl;
-
+                            */
 
                             computeQueryAvgVec(d,myMethod);
 
@@ -332,25 +337,21 @@ void computeRSMethods(Index* ind)
                                     }
 
 #if 1//FBMODE
-                                    //if(relJudgDocs.size()==5 )
-                                    myMethod->updateProfile(*((TextQueryRep *)(qr)),relJudgDocs , nonRelJudgDocs );
-                                    //float sim2 = myMethod->computeProfDocSim(((TextQueryRep *)(qr)) ,docID, relJudgDocs , nonRelJudgDocs , newNonRel,newRel);
-                                    //cerr<<"sim before: "<<sim<<" after prof updating: "<< sim2<<endl;
+
+                                    if(isRel)
+                                        myMethod->updateProfile(*((TextQueryRep *)(qr)),relJudgDocs , nonRelJudgDocs );
 #endif
-#if UPDTHRMODE == 1
+
                                     if(!isRel)
                                         if( numberOfShownNonRelDocs == numOfShownNonRel )
                                         {
                                             myMethod->updateThreshold(*((TextQueryRep *)(qr)), relJudgDocs , nonRelJudgDocs ,0,relSumScores,nonRelSumScores);//inc thr
                                             numberOfShownNonRelDocs =0;
                                         }
-#endif
 
                                 }
                                 else
                                 {
-                                    //newNonRel = false;//?????????????????
-                                    //newRel = false;//?????????????????
                                     numberOfNotShownDocs++;
                                 }
 #if UPDTHRMODE == 1

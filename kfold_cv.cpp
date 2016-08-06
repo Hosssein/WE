@@ -58,6 +58,7 @@ void k_fold_cross_validation(int k, int q_num, string filePath){
 			double prec,recall;
 			ss>>temp>>temp>>prec>>temp>>temp>>recall;
 			//cout<<temp<<endl;
+			//cout<<prec<<" "<<recall<<endl;
 			counter++;
 			fold_prec[k-1].push_back(prec);
 			fold_recall[k-1].push_back(recall);
@@ -85,7 +86,10 @@ void k_fold_cross_validation(int k, int q_num, string filePath){
 		getline(in,temp);
 		getline(in,temp);
 
+		//cout<<temp3<<" "<<temp2<<" "<<temp<<endl;
+		//cout<<temp<<endl<<endl;
 		thr += temp3+temp2;
+		//cout<<thr<<endl;
 		fold_size[k-1] = fold_prec[k-1].size();
 		for (int i = 0 ; i<k ; i++){
 			avg_fold_prec[thr][i] = compute_avg(fold_prec[i]);

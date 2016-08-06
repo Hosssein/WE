@@ -722,7 +722,6 @@ public:
     virtual float softMaxFunc(vector<double> aa, vector<double> bb);
 
 
-
     virtual vector<double> extractKeyWord(int newDocId);
 
 
@@ -835,6 +834,8 @@ public:
         delete[] distQueryEst;
         return fang_score;
     }
+
+    void setCoeffParam(double coe);
 
     void setDocSmoothParam(RetParameter::DocSmoothParam &docSmthParam);
     void setQueryModelParam(RetParameter::QueryModelParam &queryModParam);

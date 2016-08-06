@@ -222,11 +222,11 @@ lemur::retrieval::RetMethod::RetMethod(const Index &dbIndex,
 
     qryParam.fbMethod = RetParameter::MIXTURE;
     RM="MIX";// *** Query Likelihood adjusted score method *** //
-    //qryParam.fbCoeff = RetParameter::defaultFBCoeff;
-    qryParam.fbCoeff =0.1;
+    qryParam.fbCoeff = RetParameter::defaultFBCoeff;//default = 0.5
+    //qryParam.fbCoeff =0.1;
     qryParam.fbPrTh = RetParameter::defaultFBPrTh;
     qryParam.fbPrSumTh = RetParameter::defaultFBPrSumTh;
-    qryParam.fbTermCount = 10;//RetParameter::defaultFBTermCount;
+    qryParam.fbTermCount = RetParameter::defaultFBTermCount;//default = 50
     qryParam.fbMixtureNoise = RetParameter::defaultFBMixNoise;
     qryParam.emIterations = 50;//RetParameter::defaultEMIterations;
 
@@ -277,7 +277,7 @@ lemur::retrieval::RetMethod::RetMethod(const Index &dbIndex,
     //Vbwn.assign(W2VecDimSize , 0.0);
     //Vwn.assign(W2VecDimSize , 0.0);
 
-    numberOfPositiveSelectedTopWord = 120.0;
+    numberOfPositiveSelectedTopWord = 50.0;
     numberOfNegativeSelectedTopWord = 20.0;
 
 
@@ -305,7 +305,10 @@ lemur::retrieval::RetMethod::RetMethod(const Index &dbIndex,
     scFunc = new ScoreFunc();
     scFunc->setScoreMethod(qryParam.adjScoreMethod);
 }
-
+void lemur::retrieval::RetMethod::setCoeffParam(double coe)
+{
+    qryParam.fbCoeff = coe;
+}
 lemur::retrieval::RetMethod::~RetMethod()
 {
     //delete [] prev_distQuery;
@@ -434,6 +437,25 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
                                                 vector<int> relJudgDoc ,vector<int> nonRelJudgDoc)
 {
 #if 1
+    //relJudgDoc.insert(relJudgDoc.end(),initRel.begin(),initRel.end());
+    IndexedRealVector rel;
+    for (int i =0 ; i<relJudgDoc.size() ; i++)
+    {
+        rel.PushValue(relJudgDoc[i],0);
+    }
+    PseudoFBDocs  *relDocs;
+    relDocs= new PseudoFBDocs(rel,relJudgDoc.size(),true);
+
+    relDocs->startIteration();
+    while(relDocs->hasMore())
+    {
+        int a;
+        double b;
+        relDocs->nextIDInfo(a,b);
+    }
+    updateTextQuery(origRep, *relDocs ,*relDocs);
+#endif
+#if 0
     //cerr<<relJudgDoc.size()<<" "<<nonRelJudgDoc.size()<<endl;
     relJudgDoc.insert(relJudgDoc.end(),initRel.begin(),initRel.end());
     nonRelJudgDoc.insert(nonRelJudgDoc.end(),initNonRel.begin(),initNonRel.end());
@@ -1324,8 +1346,8 @@ void lemur::retrieval::RetMethod::computeMixtureFBModel(QueryModel &origRep,
         }
         meanLL = 0.5*meanLL + 0.5*ll;
         if (fabs((meanLL-ll)/meanLL)< 0.0001) {
-            cerr << "converged at "<< qryParam.emIterations - itNum+1
-                 << " with likelihood= "<< ll << endl;
+            //cerr << "converged at "<< qryParam.emIterations - itNum+1
+              //   << " with likelihood= "<< ll << endl;
             break;
         }
 
