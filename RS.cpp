@@ -166,7 +166,7 @@ void computeRSMethods(Index* ind)
         outFilename =outputFileNameHM+"_ohsu";
 
 
-    outFilename += "NoFB";
+    outFilename += "MEDMM";
     outFilename += "#topPosW:"+numToStr(myMethod->numberOfPositiveSelectedTopWord)+"#topNegW:"+numToStr(myMethod->numberOfNegativeSelectedTopWord);
 
     ofstream out(outFilename.c_str());
@@ -179,7 +179,7 @@ void computeRSMethods(Index* ind)
     double start_thresh =startThresholdHM, end_thresh= endThresholdHM;
 
     for (double thresh = start_thresh ; thresh<=end_thresh ; thresh += intervalThresholdHM)
-        for(double fbCoef = 0.1 ; fbCoef <=0.95 ; fbCoef+=0.1)
+        for(double fbCoef = 0.05 ; fbCoef <=0.99 ; fbCoef+=0.05)
     {
         //for(myMethod->alphaCoef = 0.1;myMethod->alphaCoef < 1; myMethod->alphaCoef+=0.2)
         //{
@@ -211,7 +211,8 @@ void computeRSMethods(Index* ind)
 
                         cout<<"c1: "<<c1<<" c2: "<<c2<<" numOfShownNonRel: "<<numOfShownNonRel<<" numOfnotShownDoc: "<<numOfnotShownDoc<<" "<<endl;
                         resultPath = resultFileNameHM.c_str() +numToStr( myMethod->getThreshold() )+"_c1:"+numToStr(c1)+"_c2:"+numToStr(c2)+"_#showNonRel:"+numToStr(numOfShownNonRel)+"_#notShownDoc:"+numToStr(numOfnotShownDoc)+"#topPosW:"+numToStr(myMethod->numberOfPositiveSelectedTopWord)+"#topNegW:"+numToStr(myMethod->numberOfNegativeSelectedTopWord);
-                        resultPath += "fbCoef:"+numToStr(fbCoef)+".res";
+                        resultPath += "fbCoef:"+numToStr(fbCoef)+"MEDMM"+".res";
+			
 
                         //myMethod->setThreshold(thresh);
                         out<<"threshold: "<<thresh<<endl ;
@@ -336,7 +337,7 @@ void computeRSMethods(Index* ind)
                                         break;
                                     }
 
-#if 1//FBMODE
+#if 0//FBMODE
 
                                     if(isRel)
                                         myMethod->updateProfile(*((TextQueryRep *)(qr)),relJudgDocs , nonRelJudgDocs );

@@ -32,7 +32,11 @@ using namespace lemur::retrieval;
 using namespace lemur::utility;
 
 bool pairCompare(const std::pair<double, int>& firstElem, const std::pair<double, int>& secondElem);
-
+struct sort_pred{
+	bool operator()(const std::pair<int,float> &left,const std::pair<int,float> &right){
+		return left.second > right.second;
+	}
+};
 extern int RSMethodHM; // 0--> LM , 1--> RecSys
 extern int negGenModeHM;//0 --> coll , 1--> nonRel
 extern int feedbackMode;
@@ -221,7 +225,7 @@ lemur::retrieval::RetMethod::RetMethod(const Index &dbIndex,
 
 
     qryParam.fbMethod = RetParameter::MIXTURE;
-    RM="MIX";// *** Query Likelihood adjusted score method *** //
+    RM="MEDMM";// *** Query Likelihood adjusted score method *** //
     qryParam.fbCoeff = RetParameter::defaultFBCoeff;//default = 0.5
     //qryParam.fbCoeff =0.1;
     qryParam.fbPrTh = RetParameter::defaultFBPrTh;
@@ -457,8 +461,8 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
 #endif
 #if 0
     //cerr<<relJudgDoc.size()<<" "<<nonRelJudgDoc.size()<<endl;
-    relJudgDoc.insert(relJudgDoc.end(),initRel.begin(),initRel.end());
-    nonRelJudgDoc.insert(nonRelJudgDoc.end(),initNonRel.begin(),initNonRel.end());
+    //relJudgDoc.insert(relJudgDoc.end(),initRel.begin(),initRel.end());
+    //nonRelJudgDoc.insert(nonRelJudgDoc.end(),initNonRel.begin(),initNonRel.end());
 
     //cerr<<relJudgDoc.size()<<" "<<nonRelJudgDoc.size()<<endl;
 
@@ -1442,7 +1446,120 @@ void lemur::retrieval::RetMethod::computeDivMinFBModel(QueryModel &origRep,
 void lemur::retrieval::RetMethod::computeMEDMMFBModel(QueryModel &origRep,
                                                       const DocIDSet &relDocs)
 {
-    // Write Your own MEDMM right here
+    COUNT_T numTerms = ind.termCountUnique();
+			set <int> fbterms;
+			double * ct = new double[numTerms+1];
+			vector<pair<int,double> > scores;
+			//qryParam.fbCoeff =fbcoef;
+
+			TERMID_T i;
+			for (i=1; i<=numTerms; i++) ct[i]=0;
+
+			COUNT_T actualDocCount=0;
+			int Vf = 0;
+			relDocs.startIteration();
+			while (relDocs.hasMore()){
+				int id;
+				double pr;
+				relDocs.nextIDInfo(id, pr);
+				TermInfoList *tList = ind.termInfoList(id);
+				Vf += tList->size();
+				delete tList;
+			}
+
+
+			relDocs.startIteration();
+			double sum_alpha = 0;
+			vector <double> alpha_d;
+			while (relDocs.hasMore()) {
+				alpha_d.push_back(1);
+				actualDocCount++;
+				int id;
+				double pr;
+				relDocs.nextIDInfo(id,pr);
+				DocModel *dm;
+				dm = dynamic_cast<DocModel *> (computeDocRep(id));
+
+
+				origRep.startIteration();
+				while (origRep.hasMore()) {
+					QueryTerm *qt = origRep.nextTerm();
+					TermInfo *info;
+					TermInfoList *tList = ind.termInfoList(id);
+					tList->startIteration();
+					bool flag = true;
+					while (tList->hasMore()) {
+						info = tList->nextEntry();
+						if (info->termID() == qt->id()){
+							alpha_d[alpha_d.size()-1] *= (info->count()+0.1)/(ind.docLength(id)+0.1*Vf);
+							flag = false;
+							break;
+						}
+					}
+					if (flag){
+						alpha_d[alpha_d.size()-1] *= (0.1)/(ind.docLength(id)+0.1*Vf);
+					}
+					delete tList;
+					delete qt;
+				}
+				sum_alpha += (alpha_d[alpha_d.size()-1]);
+				delete dm;
+			}
+			relDocs.startIteration();
+			int doc_id = 0;
+			while (relDocs.hasMore()){
+				int id;
+				double pr;
+				relDocs.nextIDInfo(id, pr);
+				DocModel *dm;
+				dm = dynamic_cast<DocModel*> (computeDocRep(id));
+				//cerr<<"++++"<<exp(alpha_d[doc_id])/sum_alpha<<endl;
+				for (i=1; i<=numTerms; i++) { // pretend every word is unseen
+					ct[i] += (((alpha_d[doc_id])/sum_alpha)*log(dm->unseenCoeff()*collectLM->prob(i)));
+				}
+
+				TermInfoList *tList = ind.termInfoList(id);
+				TermInfo *info;
+				tList->startIteration();
+				while (tList->hasMore()) {
+					info = tList->nextEntry();
+					ct[info->termID()] += (((alpha_d[doc_id])/sum_alpha)*log(((info->count()+0.1)/(ind.docLength(id)+0.1*Vf))/
+								(dm->unseenCoeff()*collectLM->prob(info->termID()))));
+					fbterms.insert(info->termID());
+				}
+				delete tList;
+				delete dm;
+				doc_id++;
+			}
+			if (actualDocCount==0) return;
+			lemur::utility::ArrayCounter<double> lmCounter(numTerms+1);
+			double beta =1.2;
+			double lambda = 0.1;
+			double norm = 1.0/(double)actualDocCount;
+
+			for (i=1; i<=numTerms; i++) {
+				if(exp((1.0/beta)*(ct[i] -lambda*log(collectLM->prob(i))))>0){
+					scores.push_back(make_pair(i,exp((1.0/beta)*(ct[i] - lambda*log(collectLM->prob(i)))) ));
+					lmCounter.incCount(i, 
+							exp((1.0/beta)*(ct[i] -
+									lambda*log(collectLM->prob(i)))));
+				}
+			}
+			delete [] ct;
+			std::sort(scores.begin(),scores.end(),sort_pred());
+
+			ofstream write ("expanded-terms.txt", fstream::app);
+			for(int i=0; i<qryParam.fbTermCount;i++) {
+				write<<ind.term(scores[i].first)<<":"<<scores[i].second<<" ";
+			}
+			write<<endl;
+			write.close();
+
+
+
+			lemur::langmod::MLUnigramLM *fblm = new lemur::langmod::MLUnigramLM(lmCounter, ind.termLexiconID());
+			origRep.interpolateWith(*fblm, (1-qryParam.fbCoeff), qryParam.fbTermCount, qryParam.fbPrSumTh, qryParam.fbPrTh);
+			delete fblm;
 }
 void lemur::retrieval::RetMethod::computeMarkovChainFBModel(QueryModel &origRep, const DocIDSet &relDocs)
 {
@@ -1507,10 +1624,10 @@ void lemur::retrieval::RetMethod::computeRM1FBModel(QueryModel &origRep,
 
     // RelDocUnigramCounter computes SUM(D){P(w|D)*P(D|Q)} for each w
     lemur::langmod::RelDocUnigramCounter *dCounter = new lemur::langmod::RelDocUnigramCounter(relDocs, ind);
-    lemur::langmod::RelDocUnigramCounter *nCounter = new lemur::langmod::RelDocUnigramCounter(nonRelDocs, ind);
+    //lemur::langmod::RelDocUnigramCounter *nCounter = new lemur::langmod::RelDocUnigramCounter(nonRelDocs, ind);
 
     double *distQuery = new double[numTerms+1];
-    double *negDistQuery = new double[numTerms+1];
+    //double *negDistQuery = new double[numTerms+1];
     double expWeight = qryParam.fbCoeff;
 
     //double negWeight = 0.5;
@@ -1518,7 +1635,7 @@ void lemur::retrieval::RetMethod::computeRM1FBModel(QueryModel &origRep,
     TERMID_T i;
     for (i=1; i<=numTerms;i++){
         distQuery[i] = 0.0;
-        negDistQuery[i] = 0.0;
+        //negDistQuery[i] = 0.0;
     }
 
     double pSum=0.0;
@@ -1530,7 +1647,7 @@ void lemur::retrieval::RetMethod::computeRM1FBModel(QueryModel &origRep,
         distQuery[wd]=wdPr;
         pSum += wdPr;
     }
-    double nSum=0.0;
+    /*double nSum=0.0;
     nCounter->startIteration();
     while (nCounter->hasMore()) {
         int wd; // dmf FIXME
@@ -1538,23 +1655,23 @@ void lemur::retrieval::RetMethod::computeRM1FBModel(QueryModel &origRep,
         nCounter->nextCount(wd, wdPr);
         negDistQuery[wd]=wdPr;
         nSum += wdPr;
-    }
+    }*/
 
 
     for (i=1; i<=numTerms;i++) {
         //REMOVE  2 *
-        if(feedbackMode == 2)
+        //if(feedbackMode == 2)
         {
-            cout<<"normalFB"<<endl;
+            //cout<<"normalFB"<<endl;
             distQuery[i] = expWeight*distQuery[i]/pSum +
                     (1-expWeight)*ind.termCount(i)/ind.termCount();
 
-        }else if(feedbackMode == 1)
+        }/*else if(feedbackMode == 1)
         {
             cout<<"ourFB"<<endl;
             distQuery[i] =  expWeight*(getNegWeight()*(distQuery[i]/pSum)-(1-getNegWeight())*(negDistQuery[i]/nSum) )+
                     (1-expWeight)*ind.termCount(i)/ind.termCount();
-        }
+        }*/
 
         lemur::utility::ArrayCounter<double> lmCounter(numTerms+1);
         for (i=1; i<=numTerms; i++) {
@@ -1570,15 +1687,56 @@ void lemur::retrieval::RetMethod::computeRM1FBModel(QueryModel &origRep,
                                 qryParam.fbPrSumTh, 0.0);
         delete fblm;
         delete dCounter;
-        delete nCounter;
+        //delete nCounter;
         delete[] distQuery;
-        delete[] negDistQuery;
+        //delete[] negDistQuery;
     }
 }
 void lemur::retrieval::RetMethod::computeRM3FBModel(QueryModel &origRep,
                                                     const DocIDSet &relDocs)
 {
-    // Write Your own RM3 right here
+    COUNT_T numTerms = ind.termCountUnique();
+		//qryParam.fbCoeff =fbcoef;
+
+		// RelDocUnigramCounter computes SUM(D){P(w|D)*P(D|Q)} for each w
+		lemur::langmod::RelDocUnigramCounter *dCounter = new lemur::langmod::RelDocUnigramCounter(relDocs, ind);
+
+		double *distQuery = new double[numTerms+1];
+		double expWeight = qryParam.fbCoeff;
+
+		TERMID_T i;
+		for (i=1; i<=numTerms;i++)
+			distQuery[i] = 0.0;
+
+		double pSum=0.0;
+		dCounter->startIteration();
+		while (dCounter->hasMore()) {
+			int wd; // dmf FIXME
+			double wdPr;
+			dCounter->nextCount(wd, wdPr);
+			distQuery[wd]=wdPr;
+			pSum += wdPr;
+		}
+
+		for (i=1; i<=numTerms;i++) {
+			distQuery[i] = (expWeight*distQuery[i]/pSum +
+					(1-expWeight)*ind.termCount(i)/ind.termCount());
+		}
+
+
+		lemur::utility::ArrayCounter<double> lmCounter(numTerms+1);
+		for (i=1; i<=numTerms; i++) {
+			if (distQuery[i] > 0) {
+				lmCounter.incCount(i, distQuery[i]);
+			}
+		}
+		lemur::langmod::MLUnigramLM *fblm = new lemur::langmod::MLUnigramLM(lmCounter, ind.termLexiconID());
+		origRep.interpolateWith(*fblm, (1-qryParam.fbCoeff), qryParam.fbTermCount, qryParam.fbPrSumTh, qryParam.fbPrTh);
+		//origRep.interpolateWith(*fblm, 0.0, qryParam.fbTermCount,
+		//		qryParam.fbPrSumTh, 0.0);
+		delete fblm;
+		delete dCounter;
+		delete[] distQuery;
 }
 
 
@@ -1700,6 +1858,117 @@ void lemur::retrieval::RetMethod::computeRM2FBModel(QueryModel &origRep,
 void lemur::retrieval::RetMethod::computeRM4FBModel(QueryModel &origRep,
                                                     const DocIDSet &relDocs)
 {
-    cout<<"haha";
-    // Write Your own RM4 right here
+    	COUNT_T numTerms = ind.termCountUnique();
+	COUNT_T termCount = ind.termCount();
+	//qryParam.fbCoeff =fbcoef;
+	double expWeight = qryParam.fbCoeff;
+
+	// RelDocUnigramCounter computes P(w)=SUM(D){P(w|D)*P(D|Q)} for each w
+	// P(w) = SUM_d P(w|d) p(d)
+	lemur::langmod::RelDocUnigramCounter *dCounter = new lemur::langmod::RelDocUnigramCounter(relDocs, ind);
+
+	double *distQuery = new double[numTerms+1];
+	COUNT_T numDocs = ind.docCount();
+	vector<termProb> **tProbs = new vector<termProb> *[numDocs + 1];
+
+	int i;
+	for (i=1; i<=numTerms;i++) 
+		distQuery[i] = 0.0;
+	for (i = 1; i <= numDocs; i++) {
+		tProbs[i] = NULL;
+	}
+	double pSum=0.0;
+	dCounter->startIteration();
+	while (dCounter->hasMore()) {
+		int wd; // dmf FIXME
+		double wdPr;
+		dCounter->nextCount(wd, wdPr);
+		distQuery[wd]=wdPr;
+		pSum += wdPr;
+	}
+	//for(int i=0;i<numTerms+1;i++)
+	//distQuery[i]=distQuery[i]/pSum;
+
+	// Put these in a faster structure.
+	vector <TERMID_T> qTerms; // TERM_ID
+	origRep.startIteration();
+	while (origRep.hasMore()) {
+		QueryTerm *qt = origRep.nextTerm();
+		qTerms.push_back(qt->id());
+		delete(qt);
+	}
+	COUNT_T numQTerms = qTerms.size();
+	dCounter->startIteration();
+	while (dCounter->hasMore()) {
+		int wd; // dmf fixme
+		double P_w;
+		double P_qw=0;
+		double P_Q_w = 1.0;
+		// P(q|w) = SUM_d P(q|d) P(w|d) p(d)
+		dCounter->nextCount(wd, P_w);
+		P_w=distQuery[wd];
+		//cerr << P_w << endl;
+		for (int j = 0; j < numQTerms; j++) {
+			TERMID_T qtID = qTerms[j]; // TERM_ID
+			relDocs.startIteration();
+			while (relDocs.hasMore()) {
+				int docID;
+				double P_d, P_w_d, P_q_d;
+				double dlength;
+				relDocs.nextIDInfo(docID, P_d);
+				dlength  = (double)ind.docLength(docID);
+				if (tProbs[docID] == NULL) {
+					vector<termProb> * pList = new vector<termProb>;
+					TermInfoList *tList = ind.termInfoList(docID);
+					TermInfo *t;
+					tList->startIteration();
+					while (tList->hasMore()) {
+						t = tList->nextEntry();
+						termProb prob;
+						prob.id = t->termID();
+						prob.prob = expWeight*t->count()/dlength+
+							(1-expWeight)*ind.termCount(t->termID())/termCount;
+						pList->push_back(prob);
+					}
+					delete(tList);
+					tProbs[docID] = pList;
+				}
+				vector<termProb> * pList = tProbs[docID];       
+				P_w_d=0.0;
+				P_q_d=0.0;
+				for (int i = 0; i < pList->size(); i++) {         
+					// p(q|d)= a*tf(q,d)/|d|+(1-a)*tf(q,C)/|C|
+					if((*pList)[i].id == qtID)
+						P_q_d = (*pList)[i].prob;     
+					// p(w|d)= a*tf(w,d)/|d|+(1-a)*tf(w,C)/|C|
+					if((*pList)[i].id == wd)
+						P_w_d = (*pList)[i].prob;
+					if(P_q_d && P_w_d)
+						break;
+				}
+				//cerr<<"###########"<<P_q_d<<" "<<P_w_d<<endl;
+				P_qw += P_d*P_w_d*P_q_d;
+			}
+			// P(Q|w) = PROD_q P(q|w) / p(w)
+			P_Q_w *= P_qw/P_w;
+		}
+		// P(w|Q) = k P(w) P(Q|w), k=1
+		distQuery[wd] = P_w*P_Q_w;
+	}
+
+	lemur::utility::ArrayCounter<double> lmCounter(numTerms+1);
+	for (i=1; i<=numTerms; i++) {
+		//if (distQuery[i] > 0) {
+		lmCounter.incCount(i, distQuery[i]);
+		//}
+	}
+	lemur::langmod::MLUnigramLM *fblm = new lemur::langmod::MLUnigramLM(lmCounter, ind.termLexiconID());
+	origRep.interpolateWith(*fblm, 1.0-qryParam.fbCoeff, qryParam.fbTermCount, qryParam.fbPrSumTh, qryParam.fbPrTh);
+	delete fblm;
+	delete dCounter;
+	for (i = 1; i <= numDocs; i++) {
+		delete(tProbs[i]);
+	}
+	delete[](tProbs);
+	delete[] distQuery;
 }
