@@ -225,12 +225,12 @@ lemur::retrieval::RetMethod::RetMethod(const Index &dbIndex,
 
 
     qryParam.fbMethod = RetParameter::MIXTURE;
-    RM="MEDMM";// *** Query Likelihood adjusted score method *** //
+    RM="MIX";// *** Query Likelihood adjusted score method *** //
     qryParam.fbCoeff = RetParameter::defaultFBCoeff;//default = 0.5
     //qryParam.fbCoeff =0.1;
     qryParam.fbPrTh = RetParameter::defaultFBPrTh;
     qryParam.fbPrSumTh = RetParameter::defaultFBPrSumTh;
-    qryParam.fbTermCount = RetParameter::defaultFBTermCount;//default = 50
+    qryParam.fbTermCount = 45;//RetParameter::defaultFBTermCount;//default = 50
     qryParam.fbMixtureNoise = RetParameter::defaultFBMixNoise;
     qryParam.emIterations = 50;//RetParameter::defaultEMIterations;
 
@@ -281,7 +281,7 @@ lemur::retrieval::RetMethod::RetMethod(const Index &dbIndex,
     //Vbwn.assign(W2VecDimSize , 0.0);
     //Vwn.assign(W2VecDimSize , 0.0);
 
-    numberOfPositiveSelectedTopWord = 50.0;
+    numberOfPositiveSelectedTopWord = 45.0;
     numberOfNegativeSelectedTopWord = 20.0;
 
 
@@ -440,7 +440,7 @@ DocumentRep *lemur::retrieval::RetMethod::computeDocRep(DOCID_T docID)
 void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRep,
                                                 vector<int> relJudgDoc ,vector<int> nonRelJudgDoc)
 {
-#if 1
+#if 0
     //relJudgDoc.insert(relJudgDoc.end(),initRel.begin(),initRel.end());
     IndexedRealVector rel;
     for (int i =0 ; i<relJudgDoc.size() ; i++)
@@ -459,7 +459,7 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
     }*/
     updateTextQuery(origRep, *relDocs ,*relDocs);
 #endif
-#if 0
+#if 1
     //cerr<<relJudgDoc.size()<<" "<<nonRelJudgDoc.size()<<endl;
     //relJudgDoc.insert(relJudgDoc.end(),initRel.begin(),initRel.end());
     //nonRelJudgDoc.insert(nonRelJudgDoc.end(),initNonRel.begin(),initNonRel.end());

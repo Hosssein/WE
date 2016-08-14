@@ -165,7 +165,7 @@ void computeRSMethods(Index* ind)
     else if (DATASET == 1)
         outFilename =outputFileNameHM+"_ohsu";
 
-    string methodName = "MEDMM";
+    string methodName = "NoFB";
 
     outFilename += methodName;
     outFilename += "#topPosW:"+numToStr(myMethod->numberOfPositiveSelectedTopWord)+"#topNegW:"+numToStr(myMethod->numberOfNegativeSelectedTopWord);
@@ -180,8 +180,9 @@ void computeRSMethods(Index* ind)
     double start_thresh =startThresholdHM, end_thresh= endThresholdHM;
 
     for (double thresh = start_thresh ; thresh<=end_thresh ; thresh += intervalThresholdHM)
-        for(double fbCoef = 0.05 ; fbCoef <=0.99 ; fbCoef+=0.05)
+       // for(double fbCoef = 0.1 ; fbCoef <=0.99 ; fbCoef+=0.2)
         {
+            double fbCoef = 0.1;
             //for(myMethod->alphaCoef = 0.1;myMethod->alphaCoef < 1; myMethod->alphaCoef+=0.2)
             //{
             //  for(myMethod->betaCoef = 0.1;myMethod->betaCoef < 1; myMethod->betaCoef+=0.2)
@@ -189,15 +190,15 @@ void computeRSMethods(Index* ind)
             //    for(myMethod->lambdaCoef = 0.1;myMethod->lambdaCoef < 1; myMethod->lambdaCoef +=0.2)
             //    {
 
-            //for(double c1 = 0.05 ; c1<=0.5 ;c1+=0.05)//inc
-            double c1 = 0.4;
+            for(double c1 = 0.05 ; c1<=0.5 ;c1+=0.05)//inc
+            //double c1 = 0.45;
             {
                 myMethod->setC1(c1);
-                //for(double c2 = 0.01 ; c2 <= 0.2 ; c2+=0.03)//dec
-                double c2 = 0.1;
+                for(double c2 = 0.01 ; c2 <= 0.2 ; c2+=0.03)//dec
+                //double c2 = 0.1;
                 {
-                    //if(c2 > c1)
-                    //    break;
+                    if(c2 > c1)
+                        break;
                     //myMethod->setThreshold(init_thr);
                     myMethod->setC2(c2);
 
@@ -256,7 +257,7 @@ void computeRSMethods(Index* ind)
 
 
                                 ///*******************************************************///
-#if 1
+#if 0
                                 /*vector<int> rell,nonrell;
                             //cerr<<"before: "<<myMethod->initRel.size() <<" "<<myMethod->initNonRel.size()<<endl;
                             initJudgDocsVector(ind ,rell ,nonrell, q->id());
@@ -338,7 +339,7 @@ void computeRSMethods(Index* ind)
                                             break;
                                         }
 
-#if 1//FBMODE
+#if 0//FBMODE
 
                                         if(isRel)
                                             myMethod->updateProfile(*((TextQueryRep *)(qr)),relJudgDocs , nonRelJudgDocs );
@@ -365,7 +366,7 @@ void computeRSMethods(Index* ind)
 #endif
                                 }//endfor docs
 
-                                cerr<<"\nresults size : "<<results.size();
+                                cerr<<"\nresults size : "<<results.size()<<endl;
 
                                 results.Sort();
                                 resultFile.writeResults(q->id() ,&results,results.size());
@@ -681,9 +682,13 @@ void readWordEmbeddingFile(Index *ind)
     cout << "ReadWordEmbeddingFile\n";
     string line;
 
+#if 1
     ifstream in("infile_vectors_100D_W2V.txt");
     getline(in,line);//first line is statistical in W2V
-
+#endif
+#if 0
+    ifstream in("infile_vectors_100D_Glove.txt");
+#endif
     while(getline(in,line))
     {
         cc++;
