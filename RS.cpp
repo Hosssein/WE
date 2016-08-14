@@ -165,10 +165,12 @@ void computeRSMethods(Index* ind)
     else if (DATASET == 1)
         outFilename =outputFileNameHM+"_ohsu";
 
-    string methodName = "NoFB";
+#define UpProf  1
+#define COMPAVG 1
+    string methodName = "W2V";
 
     outFilename += methodName;
-    outFilename += "#topPosW:"+numToStr(myMethod->numberOfPositiveSelectedTopWord)+"#topNegW:"+numToStr(myMethod->numberOfNegativeSelectedTopWord);
+    outFilename += "#topPosW:30-100(20)";
 
     ofstream out(outFilename.c_str());
 
@@ -180,9 +182,11 @@ void computeRSMethods(Index* ind)
     double start_thresh =startThresholdHM, end_thresh= endThresholdHM;
 
     for (double thresh = start_thresh ; thresh<=end_thresh ; thresh += intervalThresholdHM)
-       // for(double fbCoef = 0.1 ; fbCoef <=0.99 ; fbCoef+=0.2)
+       for(double fbCoef = 0.05 ; fbCoef <=0.99 ; fbCoef+=0.15)
+           for(double topPos = 30; topPos <= 100 ; topPos+=20)
         {
-            double fbCoef = 0.1;
+            //double fbCoef = 0.1;
+
             //for(myMethod->alphaCoef = 0.1;myMethod->alphaCoef < 1; myMethod->alphaCoef+=0.2)
             //{
             //  for(myMethod->betaCoef = 0.1;myMethod->betaCoef < 1; myMethod->betaCoef+=0.2)
@@ -210,6 +214,8 @@ void computeRSMethods(Index* ind)
                         int numOfnotShownDoc = 700;
                         {
                             myMethod->setThreshold(thresh);
+                            myMethod->setNumberOfPositiveSelectedTopWordAndFBcount(topPos);
+
 
                             cout<<"c1: "<<c1<<" c2: "<<c2<<" numOfShownNonRel: "<<numOfShownNonRel<<" numOfnotShownDoc: "<<numOfnotShownDoc<<" "<<endl;
                             resultPath = resultFileNameHM.c_str() +numToStr( myMethod->getThreshold() )+"_c1:"+numToStr(c1)+"_c2:"+numToStr(c2)+"_#showNonRel:"+numToStr(numOfShownNonRel)+"_#notShownDoc:"+numToStr(numOfnotShownDoc)+"#topPosW:"+numToStr(myMethod->numberOfPositiveSelectedTopWord)+"#topNegW:"+numToStr(myMethod->numberOfNegativeSelectedTopWord);
@@ -217,7 +223,7 @@ void computeRSMethods(Index* ind)
 
 
                             //myMethod->setThreshold(thresh);
-                            out<<"threshold: "<<thresh<<endl ;
+                            out<<"threshold: "<<thresh<<" fbcoef: "<<fbCoef<<" topPos: "<<topPos<<endl ;
 
                             IndexedRealVector results;
 
@@ -257,7 +263,7 @@ void computeRSMethods(Index* ind)
 
 
                                 ///*******************************************************///
-#if 0
+#if COMPAVG
                                 /*vector<int> rell,nonrell;
                             //cerr<<"before: "<<myMethod->initRel.size() <<" "<<myMethod->initNonRel.size()<<endl;
                             initJudgDocsVector(ind ,rell ,nonrell, q->id());
@@ -339,7 +345,8 @@ void computeRSMethods(Index* ind)
                                             break;
                                         }
 
-#if 0//FBMODE
+//#if 0//FBMODE
+#if UpProf
 
                                         if(isRel)
                                             myMethod->updateProfile(*((TextQueryRep *)(qr)),relJudgDocs , nonRelJudgDocs );

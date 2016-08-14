@@ -975,6 +975,13 @@ public:
     void computeRelNonRelDist(TextQueryRep &origRep,
                               const vector<int> relDocs, const vector<int> nonRelDocs, bool isRelevant, bool computeCoeff); //!!!
 
+    void setNumberOfPositiveSelectedTopWordAndFBcount(double n)
+    {
+        numberOfPositiveSelectedTopWord = n;
+        this->qryParam.fbTermCount = n;
+    }
+
+
     bool *relComputed;
     bool *nonRelComputed;
     int W2VecDimSize;
