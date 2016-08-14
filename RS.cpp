@@ -112,6 +112,16 @@ int main(int argc, char * argv[])
         //    indexPath = "/home/mozhdeh/Desktop/AP/index/index.key";
         //   queryPath = "/home/mozhdeh/Desktop/AP/Data/topics.stemmed.xml";
         //   break;
+    case 4:
+        judgmentPath = "/home/iis/Desktop/RS-Framework/DataSets/Infile/Data/qrels_en";
+        indexPath = "/home/iis/Desktop/RS-Framework/DataSets/Infile/Index/En/index.key";
+        queryPath = "/home/iis/Desktop/RS-Framework/DataSets/Infile/Data/q_en_titleKeyword_en.stemmed.xml";
+        break;
+        //case 2:
+        //    judgmentPath ="/home/mozhdeh/Desktop/AP/Data/jud-ap.txt";
+        //    indexPath = "/home/mozhdeh/Desktop/AP/index/index.key";
+        //   queryPath = "/home/mozhdeh/Desktop/AP/Data/topics.stemmed.xml";
+        //   break;
     default:
         if(DATASET == 0)//infile
         {
