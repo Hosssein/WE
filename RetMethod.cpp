@@ -440,7 +440,7 @@ DocumentRep *lemur::retrieval::RetMethod::computeDocRep(DOCID_T docID)
 void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRep,
                                                 vector<int> relJudgDoc ,vector<int> nonRelJudgDoc)
 {
-#if 0
+#if 1
     //relJudgDoc.insert(relJudgDoc.end(),initRel.begin(),initRel.end());
     IndexedRealVector rel;
     for (int i =0 ; i<relJudgDoc.size() ; i++)
@@ -459,7 +459,7 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
     }*/
     updateTextQuery(origRep, *relDocs ,*relDocs);
 #endif
-#if 1
+#if 0
     //cerr<<relJudgDoc.size()<<" "<<nonRelJudgDoc.size()<<endl;
     //relJudgDoc.insert(relJudgDoc.end(),initRel.begin(),initRel.end());
     //nonRelJudgDoc.insert(nonRelJudgDoc.end(),initNonRel.begin(),initNonRel.end());

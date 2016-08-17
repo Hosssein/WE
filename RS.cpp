@@ -113,9 +113,9 @@ int main(int argc, char * argv[])
         //   queryPath = "/home/mozhdeh/Desktop/AP/Data/topics.stemmed.xml";
         //   break;
     case 4:
-        judgmentPath = "/home/iis/Desktop/RS-Framework/Data/INFILE/qrels_en";
-        indexPath= "/home/iis/Desktop/Edu/thesis/index/infile/en/index.key";
-        queryPath = "/home/iis/Desktop/Edu/thesis/Data/INFILE/q_en_titleKeyword_en.stemmed.xml";
+        judgmentPath = "/home/iis/Desktop/RS-Framework/DataSets/Infile/Data/qrels_en";
+        indexPath= "/home/iis/Desktop/RS-Framework/DataSets/Infile/Index/En/index.key";
+        queryPath = "/home/iis/Desktop/RS-Framework/DataSets/Infile/Data/q_en_titleKeyword_en.stemmed.xml";
 
         break;
     default:
@@ -172,8 +172,8 @@ void computeRSMethods(Index* ind)
         outFilename =outputFileNameHM+"_ohsu";
 
 #define UpProf  1
-#define COMPAVG 1
-    string methodName = "W2V";
+#define COMPAVG 0
+    string methodName = "RM3";
 
     outFilename += methodName;
     outFilename += "#topPosW:30-100(20)";
@@ -188,7 +188,7 @@ void computeRSMethods(Index* ind)
     double start_thresh =startThresholdHM, end_thresh= endThresholdHM;
 
     for (double thresh = start_thresh ; thresh<=end_thresh ; thresh += intervalThresholdHM)
-        for(double fbCoef = 0.05 ; fbCoef <=0.99 ; fbCoef+=0.15)
+        for(double fbCoef = 0.20 ; fbCoef <=0.99 ; fbCoef+=0.15)
             for(double topPos = 30; topPos <= 100 ; topPos+=20)
             {
                 //double fbCoef = 0.1;
