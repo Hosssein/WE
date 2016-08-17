@@ -172,11 +172,11 @@ void computeRSMethods(Index* ind)
         outFilename =outputFileNameHM+"_ohsu";
 
 #define UpProf  1
-#define COMPAVG 0
-    string methodName = "RM3";
+#define COMPAVG 1
+    string methodName = "W2V";
 
     outFilename += methodName;
-    outFilename += "#topPosW:30-100(20)";
+    outFilename += "#topPosW:30-100(20)_NoCtuning";
 
     ofstream out(outFilename.c_str());
 
@@ -188,7 +188,7 @@ void computeRSMethods(Index* ind)
     double start_thresh =startThresholdHM, end_thresh= endThresholdHM;
 
     for (double thresh = start_thresh ; thresh<=end_thresh ; thresh += intervalThresholdHM)
-        for(double fbCoef = 0.20 ; fbCoef <=0.99 ; fbCoef+=0.15)
+        for(double fbCoef = 0.05 ; fbCoef <=0.99 ; fbCoef+=0.15)
             for(double topPos = 30; topPos <= 100 ; topPos+=20)
             {
                 //double fbCoef = 0.1;
@@ -200,15 +200,15 @@ void computeRSMethods(Index* ind)
                 //    for(myMethod->lambdaCoef = 0.1;myMethod->lambdaCoef < 1; myMethod->lambdaCoef +=0.2)
                 //    {
 
-                for(double c1 = 0.05 ; c1<=0.5 ;c1+=0.05)//inc
-                    //double c1 = 0.45;
+                //for(double c1 = 0.05 ; c1<=0.5 ;c1+=0.05)//inc
+                    double c1 = 0.30;
                 {
                     myMethod->setC1(c1);
-                    for(double c2 = 0.01 ; c2 <= 0.2 ; c2+=0.03)//dec
-                        //double c2 = 0.1;
+                    //for(double c2 = 0.01 ; c2 <= 0.2 ; c2+=0.03)//dec
+                        double c2 = 0.04;
                     {
-                        if(c2 > c1)
-                            break;
+                        //if(c2 > c1)
+                            //break;
                         //myMethod->setThreshold(init_thr);
                         myMethod->setC2(c2);
 
@@ -225,7 +225,7 @@ void computeRSMethods(Index* ind)
 
                                 cout<<"c1: "<<c1<<" c2: "<<c2<<" numOfShownNonRel: "<<numOfShownNonRel<<" numOfnotShownDoc: "<<numOfnotShownDoc<<" "<<endl;
                                 resultPath = resultFileNameHM.c_str() +numToStr( myMethod->getThreshold() )+"_c1:"+numToStr(c1)+"_c2:"+numToStr(c2)+"_#showNonRel:"+numToStr(numOfShownNonRel)+"_#notShownDoc:"+numToStr(numOfnotShownDoc)+"#topPosW:"+numToStr(myMethod->numberOfPositiveSelectedTopWord)+"#topNegW:"+numToStr(myMethod->numberOfNegativeSelectedTopWord);
-                                resultPath += "fbCoef:"+numToStr(fbCoef)+methodName+".res";
+                                resultPath += "fbCoef:"+numToStr(fbCoef)+methodName+"NoCtuning"+".res";
 
 
                                 //myMethod->setThreshold(thresh);
