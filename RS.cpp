@@ -113,9 +113,9 @@ int main(int argc, char * argv[])
         //   queryPath = "/home/mozhdeh/Desktop/AP/Data/topics.stemmed.xml";
         //   break;
     case 4:
-        judgmentPath = "/home/iis/Desktop/RS-Framework/DataSets/Infile/Data/qrels_en";
-        indexPath= "/home/iis/Desktop/RS-Framework/DataSets/Infile/Index/En/index.key";
-        queryPath = "/home/iis/Desktop/RS-Framework/DataSets/Infile/Data/q_en_titleKeyword_en.stemmed.xml";
+        judgmentPath = "/home/iis/Desktop/RS-Framework/Data/INFILE/qrels_en";
+        indexPath= "/home/iis/Desktop/Edu/thesis/index/infile/en/index.key";
+        queryPath = "/home/iis/Desktop/Edu/thesis/Data/INFILE/q_en_titleKeyword_en.stemmed.xml";
 
         break;
     default:
@@ -1020,3 +1020,4 @@ void ParseQuery(){
 }
 #endif
 #endif
+
