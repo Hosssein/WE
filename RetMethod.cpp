@@ -484,8 +484,9 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
             {
                 vector<double>tt = wordEmbedding[eventInd];
 
-                float sc = cosineSim(Vq , tt);
+                //float sc = cosineSim(Vq , tt);
                 //float sc = softMaxFunc(Vq , tt);
+                float sc = softMaxFunc2(Vq , tt);
 
                 probWordVec.push_back(pair<double,int>(sc,eventInd));
             }
@@ -569,6 +570,10 @@ float lemur::retrieval::RetMethod::cosineSim(vector<double> aa, vector<double> b
 float lemur::retrieval::RetMethod::softMaxFunc(vector<double> aa, vector<double> bb)
 {
     return exp(cosineSim(aa,bb));
+}
+float lemur::retrieval::RetMethod::softMaxFunc2(vector<double> aa, vector<double> bb)
+{
+    return 1/1+exp(-cosineSim(aa,bb));
 }
 
 vector<double> lemur::retrieval::RetMethod::extractKeyWord(int newDocId)

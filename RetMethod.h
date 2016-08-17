@@ -720,7 +720,7 @@ public:
 
     virtual float cosineSim(vector<double> aa, vector<double> bb);
     virtual float softMaxFunc(vector<double> aa, vector<double> bb);
-
+    virtual float softMaxFunc2(vector<double> aa, vector<double> bb);
 
     virtual vector<double> extractKeyWord(int newDocId);
 
