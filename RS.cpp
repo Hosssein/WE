@@ -173,7 +173,7 @@ void computeRSMethods(Index* ind)
 
 #define UpProf  1
 #define COMPAVG 1
-    string methodName = "W2V";
+    string methodName = "W2VWW";
 
     outFilename += methodName;
     outFilename += "#topPosW:30-100(20)_NoCtuning";
