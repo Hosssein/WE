@@ -173,10 +173,10 @@ void computeRSMethods(Index* ind)
 
 #define UpProf  1
 #define COMPAVG 1
-    string methodName = "W2VWW";
+    string methodName = "W2V";
 
     outFilename += methodName;
-    outFilename += "#topPosW:30-100(20)_NoCtuning";
+    outFilename += "#topPosW:30-100(20)_NoCtuning_NumberTuning";
 
     ofstream out(outFilename.c_str());
 
@@ -212,12 +212,12 @@ void computeRSMethods(Index* ind)
                         //myMethod->setThreshold(init_thr);
                         myMethod->setC2(c2);
 
-                        //for(int numOfShownNonRel =5;numOfShownNonRel< 12;numOfShownNonRel+=2 )
-                        int numOfShownNonRel = 5;
+                        for(int numOfShownNonRel = 1;numOfShownNonRel< 12;numOfShownNonRel+=2 )
+                        //int numOfShownNonRel = 5;
                         {
 
-                            //for(int numOfnotShownDoc = 200 ;numOfnotShownDoc <= 1401 ; numOfnotShownDoc+=200)
-                            int numOfnotShownDoc = 700;
+                            for(int numOfnotShownDoc = 100 ;numOfnotShownDoc <= 1401 ; numOfnotShownDoc+=200)
+                            //int numOfnotShownDoc = 700;
                             {
                                 myMethod->setThreshold(thresh);
                                 myMethod->setNumberOfPositiveSelectedTopWordAndFBcount(topPos);
@@ -225,7 +225,7 @@ void computeRSMethods(Index* ind)
 
                                 cout<<"c1: "<<c1<<" c2: "<<c2<<" numOfShownNonRel: "<<numOfShownNonRel<<" numOfnotShownDoc: "<<numOfnotShownDoc<<" "<<endl;
                                 resultPath = resultFileNameHM.c_str() +numToStr( myMethod->getThreshold() )+"_c1:"+numToStr(c1)+"_c2:"+numToStr(c2)+"_#showNonRel:"+numToStr(numOfShownNonRel)+"_#notShownDoc:"+numToStr(numOfnotShownDoc)+"#topPosW:"+numToStr(myMethod->numberOfPositiveSelectedTopWord)+"#topNegW:"+numToStr(myMethod->numberOfNegativeSelectedTopWord);
-                                resultPath += "fbCoef:"+numToStr(fbCoef)+methodName+"NoCtuning"+".res";
+                                resultPath += "fbCoef:"+numToStr(fbCoef)+methodName+"NoCtuning_NumberTuning"+".res";
 
 
                                 //myMethod->setThreshold(thresh);
