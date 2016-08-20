@@ -225,7 +225,7 @@ lemur::retrieval::RetMethod::RetMethod(const Index &dbIndex,
 
 
     qryParam.fbMethod = RetParameter::MIXTURE;
-    RM="M";// *** Query Likelihood adjusted score method *** //
+    RM="MIX";// *** Query Likelihood adjusted score method *** //
     qryParam.fbCoeff = RetParameter::defaultFBCoeff;//default = 0.5
     //qryParam.fbCoeff =0.1;
     qryParam.fbPrTh = RetParameter::defaultFBPrTh;
@@ -440,7 +440,7 @@ DocumentRep *lemur::retrieval::RetMethod::computeDocRep(DOCID_T docID)
 void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRep,
                                                 vector<int> relJudgDoc ,vector<int> nonRelJudgDoc)
 {
-#if 0
+#if 1
     //relJudgDoc.insert(relJudgDoc.end(),initRel.begin(),initRel.end());
     IndexedRealVector rel;
     for (int i =0 ; i<relJudgDoc.size() ; i++)
@@ -459,7 +459,7 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
     }*/
     updateTextQuery(origRep, *relDocs ,*relDocs);
 #endif
-#if 1
+#if 0
     //cerr<<relJudgDoc.size()<<" "<<nonRelJudgDoc.size()<<endl;
     //relJudgDoc.insert(relJudgDoc.end(),initRel.begin(),initRel.end());
     //nonRelJudgDoc.insert(nonRelJudgDoc.end(),initNonRel.begin(),initNonRel.end());

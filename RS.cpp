@@ -172,8 +172,8 @@ void computeRSMethods(Index* ind)
         outFilename =outputFileNameHM+"_ohsu";
 
 #define UpProf  1
-#define COMPAVG 1
-    string methodName = "W2V";
+#define COMPAVG 0
+    string methodName = "MIX";
 
     outFilename += methodName;
     outFilename += "#topPosW:30-100(20)_NoCtuning_NumberTuning";
@@ -191,6 +191,7 @@ void computeRSMethods(Index* ind)
         for(double fbCoef = 0.05 ; fbCoef <=0.99 ; fbCoef+=0.15)
             for(double topPos = 30; topPos <= 100 ; topPos+=20)
             {
+		//double topPos = 30.0;
                 //double fbCoef = 0.1;
 
                 //for(myMethod->alphaCoef = 0.1;myMethod->alphaCoef < 1; myMethod->alphaCoef+=0.2)
