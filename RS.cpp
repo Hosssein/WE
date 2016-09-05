@@ -122,8 +122,12 @@ int main(int argc, char * argv[])
         if(DATASET == 0)//infile
         {
             judgmentPath = "/home/hossein/Desktop/IIS/lemur/DataSets/Infile/Data/qrels_en";
-            indexPath = "/home/hossein/Desktop/IIS/lemur/DataSets/Infile/Index/En/index.key";
-            queryPath = "/home/hossein/Desktop/IIS/lemur/DataSets/Infile/Data/q_en_titleKeyword_en.stemmed.xml";//????????
+            //indexPath = "/home/hossein/Desktop/IIS/lemur/DataSets/Infile/Index/en_notStemmed_withoutSW/index.key";
+            //queryPath = "/home/hossein/Desktop/IIS/lemur/DataSets/Infile/Data/q_en_titleKeyword_notStemmed_en.xml";
+
+            indexPath ="/home/hossein/Desktop/IIS/lemur/DataSets/Infile/Index/en_Stemmed_withoutSW/index.key";
+            queryPath = "/home/hossein/Desktop/IIS/lemur/DataSets/Infile/Data/q_en_titleKeyword_en.stemmed.xml";
+
         }else if(DATASET == 1)//ohsu
         {
             judgmentPath = "/home/hossein/Desktop/IIS/lemur/DataSets/Ohsumed/Data/trec9-train/qrels.ohsu.adapt.87";
@@ -136,18 +140,18 @@ int main(int argc, char * argv[])
     }
 
     Index *ind = IndexManager::openIndex(indexPath);// with StopWord && stemmed
-    //cerr<<ind->term("the")<<endl;
-    //cerr<<ind->term("doping");
+    cerr<<ind->term("because")<<endl;
+    cerr<<ind->term("doping")<<endl;
 
     //writeDocs2File(ind);
 
-
-    readStopWord(ind);
+#if 1
+    //readStopWord(ind);
 
     readWordEmbeddingFile(ind);
     loadJudgment();
     computeRSMethods(ind);
-
+#endif
 
 }
 
@@ -172,11 +176,11 @@ void computeRSMethods(Index* ind)
         outFilename =outputFileNameHM+"_ohsu";
 
 #define UpProf  1
-#define COMPAVG 0
-    string methodName = "MIX";
+#define COMPAVG 1
+    string methodName = "Stemmed_NoSW_W2V_Cos";
 
     outFilename += methodName;
-    outFilename += "#topPosW:30-100(20)_NoCtuning_NumberTuning";
+    outFilename += "#topPosW:20-70(20)_CsNoT_NumbersT_CoefT";
 
     ofstream out(outFilename.c_str());
 
@@ -188,10 +192,10 @@ void computeRSMethods(Index* ind)
     double start_thresh =startThresholdHM, end_thresh= endThresholdHM;
 
     for (double thresh = start_thresh ; thresh<=end_thresh ; thresh += intervalThresholdHM)
-        for(double fbCoef = 0.05 ; fbCoef <=0.99 ; fbCoef+=0.15)
-            for(double topPos = 30; topPos <= 100 ; topPos+=20)
+        for(double fbCoef = 0.05 ; fbCoef <=0.99 ; fbCoef+=0.15)//7
+            for(double topPos = 10; topPos <= 70 ; topPos+=20)//4
             {
-		//double topPos = 30.0;
+                //double topPos = 30.0;
                 //double fbCoef = 0.1;
 
                 //for(myMethod->alphaCoef = 0.1;myMethod->alphaCoef < 1; myMethod->alphaCoef+=0.2)
@@ -201,23 +205,23 @@ void computeRSMethods(Index* ind)
                 //    for(myMethod->lambdaCoef = 0.1;myMethod->lambdaCoef < 1; myMethod->lambdaCoef +=0.2)
                 //    {
 
-                //for(double c1 = 0.05 ; c1<=0.5 ;c1+=0.05)//inc
+                //for(double c1 = 0.10 ; c1<=0.36 ;c1+=0.05)//inc//6
                     double c1 = 0.30;
                 {
                     myMethod->setC1(c1);
-                    //for(double c2 = 0.01 ; c2 <= 0.2 ; c2+=0.03)//dec
+                    //for(double c2 = 0.01 ; c2 <= 0.2 ; c2+=0.03)//dec //7
                         double c2 = 0.04;
                     {
                         //if(c2 > c1)
-                            //break;
+                        //    break;
                         //myMethod->setThreshold(init_thr);
                         myMethod->setC2(c2);
 
-                        for(int numOfShownNonRel = 1;numOfShownNonRel< 12;numOfShownNonRel+=2 )
+                        for(int numOfShownNonRel = 4;numOfShownNonRel< 11;numOfShownNonRel+=3 )//3
                         //int numOfShownNonRel = 5;
                         {
 
-                            for(int numOfnotShownDoc = 100 ;numOfnotShownDoc <= 1401 ; numOfnotShownDoc+=200)
+                            for(int numOfnotShownDoc = 100 ;numOfnotShownDoc <= 501 ; numOfnotShownDoc+=100)//4
                             //int numOfnotShownDoc = 700;
                             {
                                 myMethod->setThreshold(thresh);
@@ -226,7 +230,7 @@ void computeRSMethods(Index* ind)
 
                                 cout<<"c1: "<<c1<<" c2: "<<c2<<" numOfShownNonRel: "<<numOfShownNonRel<<" numOfnotShownDoc: "<<numOfnotShownDoc<<" "<<endl;
                                 resultPath = resultFileNameHM.c_str() +numToStr( myMethod->getThreshold() )+"_c1:"+numToStr(c1)+"_c2:"+numToStr(c2)+"_#showNonRel:"+numToStr(numOfShownNonRel)+"_#notShownDoc:"+numToStr(numOfnotShownDoc)+"#topPosW:"+numToStr(myMethod->numberOfPositiveSelectedTopWord)+"#topNegW:"+numToStr(myMethod->numberOfNegativeSelectedTopWord);
-                                resultPath += "fbCoef:"+numToStr(fbCoef)+methodName+"NoCtuning_NumberTuning"+".res";
+                                resultPath += "fbCoef:"+numToStr(fbCoef)+methodName+"CsT_NumberT"+".res";
 
 
                                 //myMethod->setThreshold(thresh);
@@ -303,13 +307,13 @@ void computeRSMethods(Index* ind)
                                     }
 
 
-                                    myMethod->relComputed = new bool[200];
+                                    /*myMethod->relComputed = new bool[200];
                                     myMethod->nonRelComputed = new bool[200];
                                     for(int ii = 0; ii < 200; ii++)
                                     {
                                         myMethod->relComputed[ii]=false;
                                         myMethod->nonRelComputed[ii]=false;
-                                    }
+                                    }*/
 
                                     //for(int docID = 1 ; docID < ind->docCount() ; docID++){ //compute for all doc
                                     vector<int> docids = queryDocList(ind,((TextQueryRep *)(qr)));
@@ -405,8 +409,9 @@ void computeRSMethods(Index* ind)
                                     delete qr;
 
                                     //delete d;
-                                    delete []myMethod->relComputed;
-                                    delete []myMethod->nonRelComputed;
+
+                                    //delete []myMethod->relComputed;//FIX ME!!!!!!
+                                    //delete []myMethod->nonRelComputed;//FIX ME!!!!
 
                                 }//end queries
 
@@ -661,13 +666,13 @@ void MonoKLModel(Index* ind){
 void writeDocs2File(Index *ind)
 {
     ofstream outfile;
-    outfile.open("infile_docs.txt");
+    outfile.open("infile_docs_Stemmed_withoutSW.txt");
     {
         for(int docID = 1 ; docID < ind->docCount(); docID++)
         {
             TermInfoList *docTermInfoList =  ind->termInfoList(docID);
             docTermInfoList->startIteration();
-            vector<string> doc(ind->docLength(docID));
+            vector<string> doc(3*ind->docLength(docID)," ");
 
             while(docTermInfoList->hasMore())
             {
@@ -675,16 +680,21 @@ void writeDocs2File(Index *ind)
                 const LOC_T *poses = ti->positions();
 
                 for(int i = 0 ; i < ti->count() ;i++)
+                {
                     doc[poses[i] ]=ind->term(ti->termID());
-
+                }
+                //delete poses;
                 //delete ti;
+
             }
-            //cout<<doc.size()<<" ind-doc: "<<ind->docLength(docID)<<"\n";
             for(int i = 0 ;i < doc.size();i++)
-                outfile<<doc[i]<<" ";
+            {
+                if(doc[i] != " ")
+                    outfile<<doc[i]<<" ";
+            }
             outfile<<endl;
 
-            delete docTermInfoList;
+            //delete docTermInfoList;
         }
 
     }
@@ -697,11 +707,12 @@ void readWordEmbeddingFile(Index *ind)
     string line;
 
 #if 1
-    ifstream in("infile_vectors_100D_W2V.txt");
+    //ifstream in("dataSets/infile_vectors_100D_W2V.txt");
+    ifstream in("dataSets/infile_docs_Stemmed_withoutSW_W2V.vectors");
     getline(in,line);//first line is statistical in W2V
 #endif
 #if 0
-    ifstream in("infile_vectors_100D_Glove.txt");
+    ifstream in("dataSets/infile_vectors_100D_Glove.txt");
 #endif
     while(getline(in,line))
     {
@@ -972,7 +983,7 @@ void showNearerTermInW2V(DocStream *qs,RetMethod *myMethod ,Index *ind)
 void readStopWord(Index *ind)
 {
     string mterm;
-    ifstream input("stops_en.txt");
+    ifstream input("dataSets/stops_en.txt");
     if(input.is_open())
     {
         int cc=0;

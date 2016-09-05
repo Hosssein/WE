@@ -858,6 +858,11 @@ public:
     double getC2(){return C2;}
     void setC2(double val){C2=val;}
 
+    double getInitC1(){return initC1;}
+    double getInitC2(){return initC2;}
+    void setInitC1(double val){initC1 = val;}
+    void setInitC2(double val){initC2 = val;}
+
     void clearPrevDistQuery()
     {
         prev_distQuery.clear();
@@ -902,6 +907,7 @@ protected:
                                            2->diff
                                         */
     double C1,C2;//for linear
+    double initC1,initC2;
     double diffThrUpdatingParam;//for diff
 
     //double *prev_distQuery;

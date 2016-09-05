@@ -440,7 +440,7 @@ DocumentRep *lemur::retrieval::RetMethod::computeDocRep(DOCID_T docID)
 void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRep,
                                                 vector<int> relJudgDoc ,vector<int> nonRelJudgDoc)
 {
-#if 1
+#if 0
     //relJudgDoc.insert(relJudgDoc.end(),initRel.begin(),initRel.end());
     IndexedRealVector rel;
     for (int i =0 ; i<relJudgDoc.size() ; i++)
@@ -459,18 +459,14 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
     }*/
     updateTextQuery(origRep, *relDocs ,*relDocs);
 #endif
-#if 0
-    //cerr<<relJudgDoc.size()<<" "<<nonRelJudgDoc.size()<<endl;
-    //relJudgDoc.insert(relJudgDoc.end(),initRel.begin(),initRel.end());
-    //nonRelJudgDoc.insert(nonRelJudgDoc.end(),initNonRel.begin(),initNonRel.end());
+#if 1
 
-    //cerr<<relJudgDoc.size()<<" "<<nonRelJudgDoc.size()<<endl;
+    map<int, vector<double> >::iterator endIt = wordEmbedding.end();
 
     vector<pair<double, int> >probWordVec;
     lemur::langmod::DocUnigramCounter *dCounter;
     dCounter = new lemur::langmod::DocUnigramCounter(relJudgDoc, ind);
 
-    set<int>::iterator endit =  stopWords.end();
     dCounter->startIteration();
     while(dCounter->hasMore())
     {
@@ -478,18 +474,18 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
         double weight;
         dCounter->nextCount(eventInd,weight);
 
-        if(wordEmbedding.find(eventInd) != wordEmbedding.end())
+        map<int, vector<double> >::iterator tempit = wordEmbedding.find(eventInd);
+        if( tempit != endIt )
         {
-            if( stopWords.find(eventInd) == endit )//is not stopword
-            {
-                vector<double>tt = wordEmbedding[eventInd];
+            vector<double> tt = tempit->second;
+            //vector<double> tt = wordEmbedding[eventInd];
 
-                //float sc = cosineSim(Vq , tt);
-                //float sc = softMaxFunc(Vq , tt);
-                float sc = softMaxFunc2(Vq , tt);
+            float sc = cosineSim(Vq , tt);
+            //float sc = softMaxFunc(Vq , tt);
+            //float sc = softMaxFunc2(Vq , tt);
 
-                probWordVec.push_back(pair<double,int>(sc,eventInd));
-            }
+            probWordVec.push_back(pair<double,int>(sc,eventInd));
+
         }
     }
     double total_sc= 0;
@@ -507,9 +503,7 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
 
 
     /*for(int i = 0 ; i < numberOfPositiveSelectedTopWord ;i ++)
-    {
         cerr << ind.term(probWordVec[i].second) <<" ";
-    }
     cerr<<endl;*/
 
 
@@ -1301,6 +1295,27 @@ void lemur::retrieval::RetMethod::updateThreshold(lemur::api::TextQueryRep &orig
         //cout<<alpha<<" "<<(relSumScores/(relSize+1.0))<<" "<<(nonRelSumScore/nonRelSize+1)<<" "<<(std::log10( (nonRelSize+1) / (relSize+1) ) + 0.005 )<<endl;
         cout <<"mode "<<mode<<" alpha "<<alpha <<" relSum: "<<(relSumScores/(relSize+1)+0.005)<<" nonRelSum: "<< (nonRelSumScore/(nonRelSize+1)+0.005) <<" val: "<<val<<" log: "<<std::log10( (nonRelSize+1) / (relSize+1) );
         cout<<" thr: "<<getThreshold()<<endl;
+    }else if (thresholdUpdatingMethod == 3) //BAUTO
+    {
+        /*
+        if(firstTime)
+        {
+            if(mode == 0)//non rel passed
+            {
+                this->setC1( 2*getC1() );
+                setThreshold(getThreshold()+getC1());
+                //cout<<"mode 0 "<<getThreshold()<<endl;
+            }
+            else if(mode == 1)//not showed anything
+            {
+                setThreshold( getThreshold()- getC1() );
+                //cout<<"mode 1 "<<getThreshold()<<endl;
+            }
+        }else
+        {
+            //FIX ME
+        }
+*/
     }
 
 
@@ -1978,3 +1993,297 @@ void lemur::retrieval::RetMethod::computeRM4FBModel(QueryModel &origRep,
     delete[](tProbs);
     delete[] distQuery;
 }
+
+#if 0
+void lemur::retrieval::RetMethod::computeWEFBModel(QueryModel &origRep,const DocIDSet &relDocs)
+{
+
+    vector<double> q2v;
+    double eps = 0.0000000001;
+    double sum=eps;
+    map<int,double> feedback_w2v_model;
+    map<int,int> word_count;
+    int tot_count=0;
+    int feedback_voc_count=0;
+    vector<int> VS;
+    COUNT_T numTerms = ind.termCountUnique();
+    double distQueryNorm;
+    double noisePr = qryParam.fbMixtureNoise;
+    double *distQuery = new double[numTerms+1];
+    double *distQueryEst = new double[numTerms+1];
+    qryParam.fbCoeff =fbcoef;
+
+    lemur::langmod::DocUnigramCounter *dCounter = new lemur::langmod::DocUnigramCounter(relDocs, ind);
+
+    vector<pair<int,double> > scores;
+    vector<pair<int,double> > pos;
+    vector<pair<int,double> > neg;
+    set<int> pos_terms;
+    set<int> neg_terms;
+
+    for (int i=1; i<=numTerms;i++)
+    {
+        distQueryEst[i] = 0.0;//rand()+0.001;
+        distQuery[i] = 0.0;//rand()+0.001;
+    }
+
+
+    genSample(pos,neg,VS,word_count,relDocs,origRep);
+
+    for(map<int,int>::iterator it = word_count.begin();it!=word_count.end();it++)
+    {
+        tot_count +=it->second;
+    }
+    //cerr<<tot_count<<endl;
+
+    int i;
+    int qcnt=0;
+    q2v.resize(dim);
+    for(int i=0;i<dim;i++){
+        q2v[i] = 0.0;
+    }
+
+    origRep.startIteration();
+    while (origRep.hasMore())
+    {
+        QueryTerm *qt = origRep.nextTerm();
+        int id = qt->id();
+        if(w2v[id].size()==0)
+        {
+            continue;
+        }
+        for(int i=0;i<dim;i++)
+        {
+            q2v[i] += w2v[id][i];
+        }
+        qcnt++;
+        //cerr<<ind.term(id)<<endl;
+        delete qt;
+    }
+
+    for(int i=0;i<dim;i++)
+    {
+        q2v[i] /= qcnt;
+    }
+
+    long double W[dim][dim]; // Feedback Matrix
+    long double WT[dim][dim]; // Transformation Matrix
+    long double delta_W[dim][dim];
+    double etha = 0.0001;
+
+    double alpha =we_alpha;
+    double lambda =we_lambda;
+    double beta =we_beta;
+
+    int n_iter = 500;
+    long double change_prev = 100.0;
+    long double change_now = 1.0;
+    for(int i=0;i<dim;i++)
+    {
+        for(int j=0;j<dim;j++)
+        {
+            double f = (double) rand()/RAND_MAX*1-0.5;
+            W[i][j] = 0.f;
+        }
+    }
+
+    while(abs(change_now)>0.000001 && n_iter != 0)
+    {
+        change_prev = change_now;
+        change_now = 0.0;
+        etha = 0.0001; //* (1+n_iter);
+        //etha = 0.000001 * (n_iter);
+        n_iter--;
+
+        for(int x=0;x<dim;x++)
+        {
+            for(int y=0;y<dim;y++)
+            {
+                WT[x][y] =W[y][x];
+                delta_W[x][y] = 0.f;
+            }
+        }
+
+        // positive samples
+        for(int i=0;i<pos.size();i++)
+        {
+            int wn = pos[i].first;
+            pos_terms.insert(wn);
+            double alpha_w = pos[i].second;
+            long double Wvq[dim];
+            double Wvq_vwn[dim];
+            for(int x=0;x<dim;x++)
+            {
+                Wvq[x]=0.0;
+                for(int y=0;y<dim;y++)
+                {
+                    Wvq[x] +=WT[x][y]*q2v[y];
+                }
+                Wvq_vwn[x] = Wvq[x]-w2v[wn][x];
+            }
+            for(int x=0;x<dim;x++)
+            {
+                for(int y=0;y<dim;y++)
+                {
+                    delta_W[x][y] += etha*(alpha*Wvq_vwn[x]*q2v[y]);
+                    W[x][y] -= etha*(alpha*Wvq_vwn[x]*q2v[y]); //FIXME
+                }
+            }
+        }
+
+        // negative samples
+        for(int i=0;i<neg.size();i++)
+        {
+            int wn_ = neg[i].first;
+            neg_terms.insert(wn_);
+            double lambda_w = neg[i].second;
+            long double Wvq[dim];
+            double Wvq_vwn_[dim];
+            for(int x=0;x<dim;x++)
+            {
+                Wvq[x]=0.0;
+                for(int y=0;y<dim;y++)
+                {
+                    Wvq[x] +=WT[x][y]*q2v[y];
+                }
+                Wvq_vwn_[x] = Wvq[x]-w2v[wn_][x];
+            }
+            for(int x=0;x<dim;x++)
+            {
+                for(int y=0;y<dim;y++)
+                {
+                    delta_W[x][y] += etha*(-lambda*Wvq_vwn_[x]*q2v[y]);
+                    W[x][y] -= etha*(-lambda*Wvq_vwn_[x]*q2v[y]);// FIXME
+                }
+            }
+        }
+
+        // regularization
+        for (int x=0; x < dim; x++)
+            for (int y = 0; y < dim; y++)
+            {
+                delta_W[x][y] -= etha*(beta*W[x][y]);
+                W[x][y] -= -etha*(beta*W[x][y]); // FIXME
+            }
+
+        // update W
+        for (int x = 0; x < dim; x++){
+            for (int y = 0; y < dim; y++){
+                //W[x][y] -= delta_W[x][y];//FIXME
+                change_now += pow(delta_W[x][y],2);
+            }
+        }
+        change_now = sqrt(change_now);//pow(change_now,1.0/4o);
+        //cerr<<" # "<<change_now<<" ";
+    }
+    //cerr<<"(O o)"<<endl;
+
+    sum=0.0;
+    vector<double> WTvq;
+
+    long double mu[dim]; // Feedback Matrix
+    WTvq.resize(dim);
+    for(int x=0;x<dim;x++)
+    {
+        double uv = 0;
+        for(int y=0;y<dim;y++)
+        {
+            uv +=WT[x][y]*q2v[y] ;
+        }
+        WTvq[x]= uv;
+    }
+
+    for(int id=0;id<VS.size();id++)
+    {
+        vector<double> vec = w2v[VS[id]];
+        int wn = VS[id];
+        if(vec.size()==0){
+            continue;
+        }
+        double sim =0.0;
+        double euc =0.0;
+        double norm1=0.0;
+        for(int i=0;i<dim;i++)
+        {
+            euc += pow(vec[i]-WTvq[i],2);
+            //euc += pow(vec[i]-q2v[i],2);
+        }
+        for(int i=0;i<dim;i++)
+        {
+            norm1+= pow(vec[i],2);
+        }
+
+        double norm2=0.0;
+        for(int i=0;i<dim;i++)
+        {
+            norm2+= pow(WTvq[i],2);
+            //norm2+= pow(q2v[i],2);
+        }
+
+        for(int i=0;i<dim;i++)
+        {
+            sim += vec[i]*WTvq[i];
+            //sim += vec[i]*q2v[i];
+        }
+
+        //double prTopic =log(6.0/sqrt(2.0*M_PI)*exp(-pow((double)sim/(sqrt(norm1)*sqrt(norm2)),2)/0.1)) ;//(1-noisePr)*sim/(sqrt(norm1)*sqrt(norm2))/
+        //double prTopic =log(1.0+-pow((double)sim/(sqrt(norm1)*sqrt(norm2)),2));//(1-noisePr)*sim/(sqrt(norm1)*sqrt(norm2))/
+        //double prTopic = sqrt(1+word_count[wn])*exp(1/(1+exp(-sim)));//sqrt(euc);//(1-noisePr)*sim/(sqrt(norm1)*sqrt(norm2))/
+        //double prTopic = exp(1.0/(1.0+exp(-sim)));//sqrt(euc);//(1-noisePr)*sim/(sqrt(norm1)*sqrt(norm2))/
+        double prTopic = word_count[wn]*exp(sim/(sqrt(norm1)*sqrt(norm2)));//sqrt(euc);//(1-noisePr)*sim/(sqrt(norm1)*sqrt(norm2))/
+        //double prTopic = exp(sim/(sqrt(norm1)*sqrt(norm2)));//sqrt(euc);//(1-noisePr)*sim/(sqrt(norm1)*sqrt(norm2))/
+        //((1-noisePr)*sim/(sqrt(norm1)*sqrt(norm2))+noisePr*collectLM->prob(wn));
+        double p_w_f = (double)word_count[wn]/(double)tot_count;
+        long double s = (double)sim/(sqrt(norm1)*sqrt(norm2));//- 0.1 * (collectLM->prob(wn)));//*exp(prTopic);//(log(1.0+sim/(sqrt(norm1)*sqrt(norm2))))
+        //long double s =((1.0-noisePr)*p_w_f/((1-noisePr)*(p_w_f)+noisePr*collectLM->prob(wn)))*prTopic;//- 0.1 * (collectLM->prob(wn)));//*exp(prTopic);//(log(1.0+sim/(sqrt(norm1)*sqrt(norm2))))
+        //cerr<<s<<endl;
+        if(pos_terms.find(wn)!=pos_terms.end()){
+            //if(neg_terms.find(wn)==neg_terms.end()){
+            scores.push_back(make_pair(wn,prTopic));
+            distQuery[wn] += prTopic;
+            sum+=distQuery[wn];
+        }
+    }
+
+    std::sort(scores.begin(),scores.end(),sort_pred());
+
+    for(int i=0;i<scores.size();i++){
+        int wn;
+        scores[i].second /=sum;
+        distQuery[wn] /=sum;
+    }
+    //std::sort(scores.begin(),scores.end(),sort_pred());
+    ofstream write ("expanded-terms.txt", fstream::app);
+    //for (int i=0; i<qryParam.fbTermCount;i++) {
+    for (int i=0; i<scores.size();i++) {
+        //for (int i=0; i<100;i++) {
+        //write<<ind.term(scores[i].first)<<":"<<scores[i].second<<" ";
+    }
+    write<<endl;
+    write.close();
+
+
+    lemur::utility::ArrayCounter<double> lmCounter(numTerms+1);
+    for (i=1; i<=numTerms; i++) {
+        if (distQuery[i] > 0) {
+            lmCounter.incCount(i, distQuery[i]);
+        }
+    }
+    dCounter->startIteration();
+    double counter =0;
+    while (dCounter->hasMore()){
+        int wd; //dmf FIXME
+        double wdCt;
+        dCounter->nextCount(wd, wdCt);
+        counter+=distQuery[wd];
+    }
+
+    lemur::langmod::MLUnigramLM *fblm = new lemur::langmod::MLUnigramLM(lmCounter, ind.termLexiconID());
+    origRep.interpolateWith(*fblm, (1-qryParam.fbCoeff), qryParam.fbTermCount,
+                            qryParam.fbPrSumTh, qryParam.fbPrTh);
+    delete fblm;
+    delete dCounter;
+    delete[] distQuery;
+    delete[] distQueryEst;
+}
+#endif
