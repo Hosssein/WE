@@ -91,8 +91,12 @@ int main(int argc, char * argv[])
         if(DATASET == 0)//infile
         {
             judgmentPath = "/home/iis/Desktop/Edu/thesis/Data/INFILE/qrels_en";
-            indexPath= "/home/iis/Desktop/Edu/thesis/index/infile/en/index.key";
+
+            //indexPath= "/home/iis/Desktop/Edu/thesis/index/infile/en_notStemmed_withoutSW/index.key";
+            //queryPath = "/home/iis/Desktop/Edu/thesis/Data/INFILE/q_en_titleKeyword_notStemmed_en.xml";
+            indexPath ="/home/iis/Desktop/Edu/thesis/index/infile/en_Stemmed_withoutSW/index.key";
             queryPath = "/home/iis/Desktop/Edu/thesis/Data/INFILE/q_en_titleKeyword_en.stemmed.xml";
+
         }else if(DATASET == 1)//ohsu
         {
             //judgmentPath = "/home/iis/Desktop/Edu/thesis/Data/ohsumed/trec9-train/qrels.ohsu.adapt.87";
@@ -180,7 +184,7 @@ void computeRSMethods(Index* ind)
     string methodName = "Stemmed_NoSW_W2V_Cos";
 
     outFilename += methodName;
-    outFilename += "#topPosW:20-70(20)_CsNoT_NumbersT_CoefT";
+    outFilename += "#topPosW:20-70(20)_NoCsNoT_NoNumbersT_CoefT";
 
     ofstream out(outFilename.c_str());
 
@@ -193,7 +197,7 @@ void computeRSMethods(Index* ind)
 
     for (double thresh = start_thresh ; thresh<=end_thresh ; thresh += intervalThresholdHM)
         for(double fbCoef = 0.05 ; fbCoef <=0.99 ; fbCoef+=0.15)//7
-            for(double topPos = 10; topPos <= 70 ; topPos+=20)//4
+            for(double topPos = 10; topPos <= 90 ; topPos+=20)//4
             {
                 //double topPos = 30.0;
                 //double fbCoef = 0.1;
@@ -210,19 +214,19 @@ void computeRSMethods(Index* ind)
                 {
                     myMethod->setC1(c1);
                     //for(double c2 = 0.01 ; c2 <= 0.2 ; c2+=0.03)//dec //7
-                        double c2 = 0.04;
+                        double c2 = 0.05;
                     {
                         //if(c2 > c1)
                         //    break;
                         //myMethod->setThreshold(init_thr);
                         myMethod->setC2(c2);
 
-                        for(int numOfShownNonRel = 4;numOfShownNonRel< 11;numOfShownNonRel+=3 )//3
-                        //int numOfShownNonRel = 5;
+                        //for(int numOfShownNonRel = 4;numOfShownNonRel< 11;numOfShownNonRel+=3 )//3
+                        int numOfShownNonRel = 5;
                         {
 
-                            for(int numOfnotShownDoc = 100 ;numOfnotShownDoc <= 501 ; numOfnotShownDoc+=100)//4
-                            //int numOfnotShownDoc = 700;
+                            //for(int numOfnotShownDoc = 100 ;numOfnotShownDoc <= 501 ; numOfnotShownDoc+=100)//4
+                            int numOfnotShownDoc = 500;
                             {
                                 myMethod->setThreshold(thresh);
                                 myMethod->setNumberOfPositiveSelectedTopWordAndFBcount(topPos);
@@ -230,7 +234,7 @@ void computeRSMethods(Index* ind)
 
                                 cout<<"c1: "<<c1<<" c2: "<<c2<<" numOfShownNonRel: "<<numOfShownNonRel<<" numOfnotShownDoc: "<<numOfnotShownDoc<<" "<<endl;
                                 resultPath = resultFileNameHM.c_str() +numToStr( myMethod->getThreshold() )+"_c1:"+numToStr(c1)+"_c2:"+numToStr(c2)+"_#showNonRel:"+numToStr(numOfShownNonRel)+"_#notShownDoc:"+numToStr(numOfnotShownDoc)+"#topPosW:"+numToStr(myMethod->numberOfPositiveSelectedTopWord)+"#topNegW:"+numToStr(myMethod->numberOfNegativeSelectedTopWord);
-                                resultPath += "fbCoef:"+numToStr(fbCoef)+methodName+"CsT_NumberT"+".res";
+                                resultPath += "fbCoef:"+numToStr(fbCoef)+methodName+"NoCsTuning_NoNumberT"+".res";
 
 
                                 //myMethod->setThreshold(thresh);
@@ -359,7 +363,8 @@ void computeRSMethods(Index* ind)
                                             //#if 0//FBMODE
 #if UpProf
 
-                                            if(isRel)
+                                            if (results.size() % 15 == 0 /*&& feedbackMode > 0*/)
+                                            //if(isRel)
                                                 myMethod->updateProfile(*((TextQueryRep *)(qr)),relJudgDocs , nonRelJudgDocs );
 #endif
 
