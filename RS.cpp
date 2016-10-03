@@ -118,7 +118,7 @@ int main(int argc, char * argv[])
         //   break;
     case 4:
         judgmentPath = "/home/iis/Desktop/RS-Framework/DataSets/Infile/Data/qrels_en";
-        indexPath= "/home/iis/Desktop/RS-Framework/DataSets/Infile/Index/En/index.key";
+        indexPath= "/home/iis/Desktop/RS-Framework/DataSets/Infile/Index/en_Stemmed_withoutSW/index.key";
         queryPath = "/home/iis/Desktop/RS-Framework/DataSets/Infile/Data/q_en_titleKeyword_en.stemmed.xml";
 
         break;
