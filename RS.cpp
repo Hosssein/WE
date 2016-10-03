@@ -125,12 +125,12 @@ int main(int argc, char * argv[])
     default:
         if(DATASET == 0)//infile
         {
-            judgmentPath = "/home/hossein/Desktop/IIS/lemur/DataSets/Infile/Data/qrels_en";
-            //indexPath = "/home/hossein/Desktop/IIS/lemur/DataSets/Infile/Index/en_notStemmed_withoutSW/index.key";
-            //queryPath = "/home/hossein/Desktop/IIS/lemur/DataSets/Infile/Data/q_en_titleKeyword_notStemmed_en.xml";
+            judgmentPath = "/home/hossein/Desktop/IIS/Lemur/DataSets/Infile/Data/qrels_en";
+            //indexPath = "/home/hossein/Desktop/IIS/Lemur/DataSets/Infile/Index/en_notStemmed_withoutSW/index.key";
+            //queryPath = "/home/hossein/Desktop/IIS/Lemur/DataSets/Infile/Data/q_en_titleKeyword_notStemmed_en.xml";
 
-            indexPath ="/home/hossein/Desktop/IIS/lemur/DataSets/Infile/Index/en_Stemmed_withoutSW/index.key";
-            queryPath = "/home/hossein/Desktop/IIS/lemur/DataSets/Infile/Data/q_en_titleKeyword_en.stemmed.xml";
+            indexPath ="/home/hossein/Desktop/IIS/Lemur/DataSets/Infile/Index/en_Stemmed_withoutSW/index.key";
+            queryPath = "/home/hossein/Desktop/IIS/Lemur/DataSets/Infile/Data/q_en_titleKeyword_en.stemmed.xml";
 
         }else if(DATASET == 1)//ohsu
         {
@@ -196,8 +196,8 @@ void computeRSMethods(Index* ind)
     double start_thresh =startThresholdHM, end_thresh= endThresholdHM;
 
     for (double thresh = start_thresh ; thresh<=end_thresh ; thresh += intervalThresholdHM)
-        for(double fbCoef = 0.05 ; fbCoef <=0.99 ; fbCoef+=0.15)//7
-            for(double topPos = 10; topPos <= 90 ; topPos+=20)//4
+        for(double fbCoef = 0.05 ; fbCoef <=0.99 ; fbCoef+=0.1)//
+            for(double topPos = 10; topPos <= 90 ; topPos+=15)//
             {
                 //double topPos = 30.0;
                 //double fbCoef = 0.1;
