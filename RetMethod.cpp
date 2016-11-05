@@ -460,7 +460,7 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
     }*/
     updateTextQuery(origRep, *relDocs ,*relDocs);
 #endif
-#if 1
+#if 0
 
     map<int, vector<double> >::iterator endIt = wordEmbedding.end();
 
@@ -553,7 +553,7 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
     delete fblm;
     //delete qr;
 #endif
-#if 0
+#if 1
 
     map<int, vector<double> >::iterator endIt = wordEmbedding.end();
 
@@ -605,7 +605,13 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
     COUNT_T numTerms = ind.termCountUnique();
     lemur::utility::ArrayCounter<double> lmCounter(numTerms+1);
 
-    int countPos = min((int)numberOfPositiveSelectedTopWord , (int)probWordVec.size());
+    //int countPos = min((int)numberOfPositiveSelectedTopWord , (int)probWordVec.size());
+    int countPos = -1;
+    if(numberOfPositiveSelectedTopWord < probWordVec.size() )
+        countPos = numberOfPositiveSelectedTopWord;
+    else
+        countPos = probWordVec.size();
+
     for (int i = 0; i < countPos; i++)
     {
         //cerr<<probWordVec[i].second;

@@ -199,7 +199,7 @@ void computeRSMethods(Index* ind)
     string methodName = "Stemmed_NoSW_W2V_Cos";
 
     outFilename += methodName;
-    outFilename += "#topSelected:5-40(10)_NoCsNoT_NoNumbersT_CoefT";//"#topPosW:20-70(20)_NoCsNoT_NoNumbersT_CoefT";
+    outFilename += "#topPosW:10-90(15)_NoCsNoT_NoNumbersT_CoefT";//"#topSelected:5-40(10)_NoCsNoT_NoNumbersT_CoefT";
 
     ofstream out(outFilename.c_str());
 
@@ -212,11 +212,11 @@ void computeRSMethods(Index* ind)
 
     for (double thresh = start_thresh ; thresh<=end_thresh ; thresh += intervalThresholdHM)
         for(double fbCoef = 0.05 ; fbCoef <=0.99 ; fbCoef+=0.1)//
-            //for(double topPos = 10; topPos <= 90 ; topPos+=15)//
-        for(double SelectedWord4Q = 5; SelectedWord4Q <= 40 ; SelectedWord4Q += 10)//
+            for(double topPos = 10; topPos <= 90 ; topPos+=15)//
+        //for(double SelectedWord4Q = 5; SelectedWord4Q <= 40 ; SelectedWord4Q += 10)//
         {
-
-                double topPos = 30.0;
+                double SelectedWord4Q =5;
+                //double topPos = 30.0;
                 //double fbCoef = 0.1;
 
                 //for(myMethod->alphaCoef = 0.1;myMethod->alphaCoef < 1; myMethod->alphaCoef+=0.2)
@@ -253,11 +253,11 @@ void computeRSMethods(Index* ind)
 
                                 cout<<"c1: "<<c1<<" c2: "<<c2<<" numOfShownNonRel: "<<numOfShownNonRel<<" numOfnotShownDoc: "<<numOfnotShownDoc<<" "<<endl;
                                 resultPath = resultFileNameHM.c_str() +numToStr( myMethod->getThreshold() )+"_c1:"+numToStr(c1)+"_c2:"+numToStr(c2)+"_#showNonRel:"+numToStr(numOfShownNonRel)+"_#notShownDoc:"+numToStr(numOfnotShownDoc)+"#topPosW:"+numToStr(myMethod->numberOfPositiveSelectedTopWord)+"#topNegW:"+numToStr(myMethod->numberOfNegativeSelectedTopWord);
-                                resultPath += "fbCoef:"+numToStr(fbCoef)+methodName+"NoCsTuning_NoNumberT"+"_topSelectedWord:"+numToStr(SelectedWord4Q)+".res";
+                                resultPath += "fbCoef:"+numToStr(fbCoef)+methodName+"NoCsTuning_NoNumberT"+/*"_topSelectedWord:"+numToStr(SelectedWord4Q)+*/".res";
 
 
                                 //myMethod->setThreshold(thresh);
-                                out<<"threshold: "<<thresh<<" fbcoef: "<<fbCoef<<" topPos: "<<topPos<<" topSelectedWord: "<<SelectedWord4Q<<endl ;
+                                out<<"threshold: "<<thresh<<" fbcoef: "<<fbCoef<<" topPos: "<<topPos<<endl;//<</*" topSelectedWord: "<<SelectedWord4Q<<*/endl ;
 
                                 IndexedRealVector results;
 
@@ -890,6 +890,7 @@ void showNearerTerms2QueryVecInW2V(DocStream *qs,RetMethod *myMethod ,Index *ind
 
 void computeQueryAvgVec(Document *d,RetMethod *myMethod )
 {
+#if 0
     queryTermsIdVec.clear();
 
     TextQuery *q = new TextQuery(*d);
@@ -919,7 +920,8 @@ void computeQueryAvgVec(Document *d,RetMethod *myMethod )
     delete qr;
     delete q;
     //delete textQR;
-#if 0
+#endif
+#if 1
     TextQuery *q = new TextQuery(*d);
     QueryRep *qr = myMethod->computeQueryRep(*q);
     TextQueryRep *textQR = (TextQueryRep *)(qr);
