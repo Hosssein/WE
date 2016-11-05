@@ -516,7 +516,13 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
         //cerr<<"\n";
 
         //cerr<<"Query Term: "<<ind.term(queryTermsIdVec[ii].first)<<" , ";
-        for(int i = 0 ; i < numberOfTopSelectedWord4EacQword ; i++)
+        int cc = -1;
+        if(numberOfNegativeSelectedTopWord < probWordVec.size())
+            cc = numberOfNegativeSelectedTopWord;
+        else
+            cc = probWordVec.size();
+
+        for(int i = 0 ; i < cc ; i++)
         {
             selectedWordProbId.push_back( probWordVec[i] );
             //cerr<<" "<<probWordVec[i].first<<" "<<ind.term(probWordVec[i].second)<<" ";
