@@ -27,6 +27,7 @@
 #include <sstream>
 
 
+
 using namespace lemur::api;
 using namespace lemur::retrieval;
 using namespace lemur::utility;
@@ -46,7 +47,7 @@ extern map<int,vector<double> >wordEmbedding;
 extern map<int,vector<double> >docIdKeyWords;
 extern set<int> stopWords;
 //extern map<int, map<int,double> > FEEDBACKMAP;
-
+extern vector<pair<int ,vector<double> > > queryTermsIdVec;
 
 static int qid=1;
 static string RM;
@@ -281,7 +282,7 @@ lemur::retrieval::RetMethod::RetMethod(const Index &dbIndex,
     //Vbwn.assign(W2VecDimSize , 0.0);
     //Vwn.assign(W2VecDimSize , 0.0);
 
-    numberOfPositiveSelectedTopWord = 45.0;
+    numberOfPositiveSelectedTopWord = 20.0;
     numberOfNegativeSelectedTopWord = 20.0;
 
 
@@ -463,6 +464,93 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
 
     map<int, vector<double> >::iterator endIt = wordEmbedding.end();
 
+
+    vector<pair<double, int> >selectedWordProbId;
+    vector<pair<double, int> >probWordVec;
+    lemur::langmod::DocUnigramCounter *dCounter;
+    dCounter = new lemur::langmod::DocUnigramCounter(relJudgDoc, ind);
+
+    for(int ii = 0 ; ii < queryTermsIdVec.size() ; ii++)
+    {
+        probWordVec.clear();
+
+        dCounter->startIteration();
+        while(dCounter->hasMore())
+        {
+            int eventInd;
+            double weight;
+            dCounter->nextCount(eventInd,weight);
+
+            map<int, vector<double> >::iterator tempit = wordEmbedding.find(eventInd);
+            if( tempit != endIt )
+            {
+                vector<double> tt = tempit->second;
+                //vector<double> tt = wordEmbedding[eventInd];
+
+
+                double sc = cosineSim(queryTermsIdVec[ii].second , tt);
+                //float sc = softMaxFunc(Vq , tt);
+                //float sc = softMaxFunc2(Vq , tt);
+
+                //cerr<<"sc: "<<sc<<" "<<ind.term(eventInd)<<endl;
+                probWordVec.push_back(pair<double,int>( sc , eventInd));// can be select from Coll !!!!
+            }
+        }
+
+        double total_sc= 0.0;
+        for(int i = 0 ; i < probWordVec.size() ; i++)
+        {
+            int cc = dCounter->count(probWordVec[i].second );
+            double score_ = log(1+cc)* exp(probWordVec[i].first);
+            probWordVec[i].first =  score_ ;
+            total_sc += score_;
+        }
+        for(int i = 0 ; i < probWordVec.size() ; i++)
+            probWordVec[i].first /= total_sc;
+
+        std::sort(probWordVec.begin() , probWordVec.end() , pairCompare);// can use top n selecting algorithm O(n)
+
+
+        //for(int i = 0 ; i < probWordVec.size() ; i++)
+        //    cerr<<probWordVec[i].first <<" ";
+        //cerr<<"\n";
+
+        //cerr<<"Query Term: "<<ind.term(queryTermsIdVec[ii].first)<<" , ";
+        for(int i = 0 ; i < numberOfTopSelectedWord4EacQword ; i++)
+        {
+            selectedWordProbId.push_back( probWordVec[i] );
+            //cerr<<" "<<probWordVec[i].first<<" "<<ind.term(probWordVec[i].second)<<" ";
+            //cerr<<" "<<selectedWordProbId[i].first<<" "<<ind.term(selectedWordProbId[i].second)<<" ";
+        }
+        //cerr<<"\n";
+
+    }
+
+
+
+    COUNT_T numTerms = ind.termCountUnique();
+    lemur::utility::ArrayCounter<double> lmCounter(numTerms+1);
+
+    int countPos = selectedWordProbId.size();
+    for (int i = 0; i < countPos; i++)
+    {
+        //cerr<<probWordVec[i].second;
+        //cerr<<" "<<probWordVec[i].first<<" ";
+        lmCounter.incCount(selectedWordProbId[i].second , selectedWordProbId[i].first);
+    }
+
+    QueryModel *qr = dynamic_cast<QueryModel *> (&origRep);
+    lemur::langmod::MLUnigramLM *fblm = new lemur::langmod::MLUnigramLM(lmCounter, ind.termLexiconID());
+    qr->interpolateWith(*fblm, (1-qryParam.fbCoeff), qryParam.fbTermCount, qryParam.fbPrSumTh, qryParam.fbPrTh);
+
+    delete dCounter;
+    delete fblm;
+    //delete qr;
+#endif
+#if 0
+
+    map<int, vector<double> >::iterator endIt = wordEmbedding.end();
+
     vector<pair<double, int> >probWordVec;
     lemur::langmod::DocUnigramCounter *dCounter;
     dCounter = new lemur::langmod::DocUnigramCounter(relJudgDoc, ind);
@@ -492,8 +580,9 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
     for(int i = 0 ; i < probWordVec.size() ; i++)
     {
         int cc = dCounter->count(probWordVec[i].second );
-        probWordVec[i].first =  log(1+cc)* exp(probWordVec[i].first);
-        total_sc += probWordVec[i].first;
+        double score_ = log(1+cc)* exp(probWordVec[i].first);
+        probWordVec[i].first =  score_ ;
+        total_sc += score_;
     }
     for(int i = 0 ; i < probWordVec.size() ; i++)
         probWordVec[i].first /= total_sc;

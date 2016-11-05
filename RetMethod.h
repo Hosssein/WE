@@ -987,6 +987,10 @@ public:
         this->qryParam.fbTermCount = n;
     }
 
+    void setNumberOfTopSelectedWord4EacQword(double n)
+    {
+        numberOfTopSelectedWord4EacQword = n;
+    }
 
     bool *relComputed;
     bool *nonRelComputed;
@@ -999,6 +1003,7 @@ public:
     vector<double> Vq;
     vector<vector<double> > Vwn ,Vbwn;
     double numberOfPositiveSelectedTopWord,numberOfNegativeSelectedTopWord;
+    double numberOfTopSelectedWord4EacQword;
 
 
     vector<int> initRel;

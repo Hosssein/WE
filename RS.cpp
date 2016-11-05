@@ -78,6 +78,8 @@ map<int,vector<double> >wordEmbedding;
 map<int ,vector<double> >docIdKeyWords;
 set<int> stopWords;
 
+vector<pair<int ,vector<double> > > queryTermsIdVec;
+
 //int numberOfInitRelDocs = 5;
 //int numberOfInitNonRelDocs = 15;
 
@@ -146,13 +148,26 @@ int main(int argc, char * argv[])
     Index *ind = IndexManager::openIndex(indexPath);// with StopWord && stemmed
     cerr<<ind->term("because")<<endl;
     cerr<<ind->term("doping")<<endl;
+    cerr<<ind->term("in")<<endl;
+    cerr<<ind->term("the")<<endl;
+    cerr<<ind->term("at")<<endl;
+    cerr<<ind->term("our")<<endl;
+    cerr<<ind->term("only")<<endl;
+    cerr<<ind->term("these")<<endl;
+    cerr<<ind->term("if")<<endl;
+    cerr<<ind->term("by")<<endl;
+    cerr<<ind->term("but")<<endl;
+    cerr<<ind->term("athlete")<<endl;
+    cerr<<ind->term("substanc")<<endl;
 
+    //return -1;
     //writeDocs2File(ind);
 
 #if 1
     //readStopWord(ind);
 
     readWordEmbeddingFile(ind);
+
     loadJudgment();
     computeRSMethods(ind);
 #endif
@@ -184,7 +199,7 @@ void computeRSMethods(Index* ind)
     string methodName = "Stemmed_NoSW_W2V_Cos";
 
     outFilename += methodName;
-    outFilename += "#topPosW:20-70(20)_NoCsNoT_NoNumbersT_CoefT";
+    outFilename += "#topSelected:5-40(10)_NoCsNoT_NoNumbersT_CoefT";//"#topPosW:20-70(20)_NoCsNoT_NoNumbersT_CoefT";
 
     ofstream out(outFilename.c_str());
 
@@ -197,9 +212,11 @@ void computeRSMethods(Index* ind)
 
     for (double thresh = start_thresh ; thresh<=end_thresh ; thresh += intervalThresholdHM)
         for(double fbCoef = 0.05 ; fbCoef <=0.99 ; fbCoef+=0.1)//
-            for(double topPos = 10; topPos <= 90 ; topPos+=15)//
-            {
-                //double topPos = 30.0;
+            //for(double topPos = 10; topPos <= 90 ; topPos+=15)//
+        for(double SelectedWord4Q = 5; SelectedWord4Q <= 40 ; SelectedWord4Q += 10)//
+        {
+
+                double topPos = 30.0;
                 //double fbCoef = 0.1;
 
                 //for(myMethod->alphaCoef = 0.1;myMethod->alphaCoef < 1; myMethod->alphaCoef+=0.2)
@@ -231,14 +248,16 @@ void computeRSMethods(Index* ind)
                                 myMethod->setThreshold(thresh);
                                 myMethod->setNumberOfPositiveSelectedTopWordAndFBcount(topPos);
 
+                                myMethod->setNumberOfTopSelectedWord4EacQword(SelectedWord4Q);
+
 
                                 cout<<"c1: "<<c1<<" c2: "<<c2<<" numOfShownNonRel: "<<numOfShownNonRel<<" numOfnotShownDoc: "<<numOfnotShownDoc<<" "<<endl;
                                 resultPath = resultFileNameHM.c_str() +numToStr( myMethod->getThreshold() )+"_c1:"+numToStr(c1)+"_c2:"+numToStr(c2)+"_#showNonRel:"+numToStr(numOfShownNonRel)+"_#notShownDoc:"+numToStr(numOfnotShownDoc)+"#topPosW:"+numToStr(myMethod->numberOfPositiveSelectedTopWord)+"#topNegW:"+numToStr(myMethod->numberOfNegativeSelectedTopWord);
-                                resultPath += "fbCoef:"+numToStr(fbCoef)+methodName+"NoCsTuning_NoNumberT"+".res";
+                                resultPath += "fbCoef:"+numToStr(fbCoef)+methodName+"NoCsTuning_NoNumberT"+"_topSelectedWord:"+numToStr(SelectedWord4Q)+".res";
 
 
                                 //myMethod->setThreshold(thresh);
-                                out<<"threshold: "<<thresh<<" fbcoef: "<<fbCoef<<" topPos: "<<topPos<<endl ;
+                                out<<"threshold: "<<thresh<<" fbcoef: "<<fbCoef<<" topPos: "<<topPos<<" topSelectedWord: "<<SelectedWord4Q<<endl ;
 
                                 IndexedRealVector results;
 
@@ -364,7 +383,6 @@ void computeRSMethods(Index* ind)
 #if UpProf
 
                                             if (results.size() % 15 == 0 /*&& feedbackMode > 0*/)
-                                            //if(isRel)
                                                 myMethod->updateProfile(*((TextQueryRep *)(qr)),relJudgDocs , nonRelJudgDocs );
 #endif
 
@@ -707,7 +725,7 @@ void writeDocs2File(Index *ind)
 }
 void readWordEmbeddingFile(Index *ind)
 {
-    int cc=0;
+    //int cc=0;
     cout << "ReadWordEmbeddingFile\n";
     string line;
 
@@ -721,7 +739,7 @@ void readWordEmbeddingFile(Index *ind)
 #endif
     while(getline(in,line))
     {
-        cc++;
+        //cc++;
         istringstream iss(line);
 
         string sub;
@@ -733,11 +751,17 @@ void readWordEmbeddingFile(Index *ind)
 
         int termID = ind->term(sub);
 
-        //if(termID == 0)
-        //{
-        //cout<<sub<<" ";
-        //continue;
-        //}
+        /*if(sub == "to")
+            cerr<<"tooooo\n";
+        if(sub == "of")
+            cerr<<"ooofff\n";
+        if(sub == "that")
+            cerr<<"thatttt\n";
+        if(sub == "at")
+            cerr<<"attttt\n";
+        if(sub == "in")
+            cerr<<"innn\n";*/
+
         while (iss>>dd)
             wordEmbedding[termID].push_back(dd);
     }
@@ -866,6 +890,36 @@ void showNearerTerms2QueryVecInW2V(DocStream *qs,RetMethod *myMethod ,Index *ind
 
 void computeQueryAvgVec(Document *d,RetMethod *myMethod )
 {
+    queryTermsIdVec.clear();
+
+    TextQuery *q = new TextQuery(*d);
+    QueryRep *qr = myMethod->computeQueryRep(*q);
+    TextQueryRep *textQR = (TextQueryRep *)(qr);
+
+
+    //double counter = 0;
+    const std::map<int,vector<double> >::iterator endIt = wordEmbedding.end();
+    textQR->startIteration();
+    while(textQR->hasMore())
+    {
+        //counter += 1;
+        QueryTerm *qt = textQR->nextTerm();
+        const std::map<int,vector<double> >::iterator it = wordEmbedding.find(qt->id());
+
+        if(it != endIt)//found
+            queryTermsIdVec.push_back(make_pair<int , vector<double> > (qt->id() ,it->second ) );
+        else
+        {
+            delete qt;
+            continue;
+        }
+        delete qt;
+    }
+
+    delete qr;
+    delete q;
+    //delete textQR;
+#if 0
     TextQuery *q = new TextQuery(*d);
     QueryRep *qr = myMethod->computeQueryRep(*q);
     TextQueryRep *textQR = (TextQueryRep *)(qr);
@@ -905,7 +959,7 @@ void computeQueryAvgVec(Document *d,RetMethod *myMethod )
     delete qr;
     delete q;
     //delete textQR;
-
+#endif
 }
 
 void showNearerTermInW2V(DocStream *qs,RetMethod *myMethod ,Index *ind)
