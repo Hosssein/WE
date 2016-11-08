@@ -441,7 +441,7 @@ DocumentRep *lemur::retrieval::RetMethod::computeDocRep(DOCID_T docID)
 void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRep,
                                                 vector<int> relJudgDoc ,vector<int> nonRelJudgDoc)
 {
-#if 1
+#if 0
     //relJudgDoc.insert(relJudgDoc.end(),initRel.begin(),initRel.end());
     IndexedRealVector rel;
     for (int i =0 ; i<relJudgDoc.size() ; i++)
@@ -553,7 +553,7 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
     delete fblm;
     //delete qr;
 #endif
-#if 0
+#if 1
 
     map<int, vector<double> >::iterator endIt = wordEmbedding.end();
 

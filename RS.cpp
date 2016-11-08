@@ -194,12 +194,12 @@ void computeRSMethods(Index* ind)
     else if (DATASET == 1)
         outFilename =outputFileNameHM+"_ohsu_";
 
-#define UpProf  0
-#define COMPAVG 0
-    string methodName = "_LM_NOFB_Stemmed_NoSW_";
+#define UpProf  1
+#define COMPAVG 1
+    string methodName = "_LM_AVGQ_W2V_Stemmed_NoSW_";
 
     outFilename += methodName;
-    outFilename += "_CsT_NumbersT_NoCoefT";//"#topSelected:5-40(10)_NoCsNoT_NoNumbersT_CoefT";////#topPosW:30-30(0)
+    outFilename += "_CsT_NumbersT_NoCoefT_#topSelected:55-55(0)_CsT_NumbersT_NoCoefT";////#topPosW:30-30(0)
 
     ofstream out(outFilename.c_str());
 
@@ -216,8 +216,8 @@ void computeRSMethods(Index* ind)
         //for(double SelectedWord4Q = 5; SelectedWord4Q <= 40 ; SelectedWord4Q += 10)//
         {
                 double SelectedWord4Q =5;
-                double topPos = 30.0;
-                double fbCoef = 0.1;
+                double topPos = 55.0;
+                double fbCoef = 0.05;
 
                 //for(myMethod->alphaCoef = 0.1;myMethod->alphaCoef < 1; myMethod->alphaCoef+=0.2)
                 //{
