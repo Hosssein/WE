@@ -460,7 +460,7 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
     }*/
     updateTextQuery(origRep, *relDocs ,*relDocs);
 #endif
-#if 0
+#if 1
 
     map<int, vector<double> >::iterator endIt = wordEmbedding.end();
 
@@ -553,7 +553,7 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
     delete fblm;
     //delete qr;
 #endif
-#if 1
+#if 0
 
     map<int, vector<double> >::iterator endIt = wordEmbedding.end();
 

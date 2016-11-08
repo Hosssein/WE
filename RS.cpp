@@ -196,10 +196,10 @@ void computeRSMethods(Index* ind)
 
 #define UpProf  1
 #define COMPAVG 1
-    string methodName = "_LM_AVGQ_W2V_Stemmed_NoSW_";
+    string methodName = "_LM_TopSelectedQ_W2V_Stemmed_NoSW_";
 
     outFilename += methodName;
-    outFilename += "_CsT_NumbersT_NoCoefT_#topSelected:55-55(0)_CsT_NumbersT_NoCoefT";////#topPosW:30-30(0)
+    outFilename += "_CsT_NumbersT_NoCoefT_#topSelected:15-15(0)_CsT_NumbersT_NoCoefT";////#topPosW:30-30(0)
 
     ofstream out(outFilename.c_str());
 
@@ -215,9 +215,9 @@ void computeRSMethods(Index* ind)
             //for(double topPos = 10; topPos <= 90 ; topPos+=15)//
         //for(double SelectedWord4Q = 5; SelectedWord4Q <= 40 ; SelectedWord4Q += 10)//
         {
-                double SelectedWord4Q =5;
-                double topPos = 55.0;
-                double fbCoef = 0.05;
+                double SelectedWord4Q =15;
+                double topPos = 30.0;
+                double fbCoef = 0.65;
 
                 //for(myMethod->alphaCoef = 0.1;myMethod->alphaCoef < 1; myMethod->alphaCoef+=0.2)
                 //{
@@ -890,7 +890,7 @@ void showNearerTerms2QueryVecInW2V(DocStream *qs,RetMethod *myMethod ,Index *ind
 
 void computeQueryAvgVec(Document *d,RetMethod *myMethod )
 {
-#if 0
+#if 1
     queryTermsIdVec.clear();
 
     TextQuery *q = new TextQuery(*d);
@@ -921,7 +921,7 @@ void computeQueryAvgVec(Document *d,RetMethod *myMethod )
     delete q;
     //delete textQR;
 #endif
-#if 1
+#if 0
     TextQuery *q = new TextQuery(*d);
     QueryRep *qr = myMethod->computeQueryRep(*q);
     TextQueryRep *textQR = (TextQueryRep *)(qr);
