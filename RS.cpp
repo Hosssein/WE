@@ -196,10 +196,10 @@ void computeRSMethods(Index* ind)
 
 #define UpProf  1
 #define COMPAVG 1
-    string methodName = "_LM_TopSelectedQ_W2V_Stemmed_NoSW_";
+    string methodName = "_W2V_TopSelectedQ_Stemmed_NoSW_";
 
     outFilename += methodName;
-    outFilename += "_CsT_NumbersT_NoCoefT_#topSelected:15-15(0)_CsT_NumbersT_NoCoefT";////#topPosW:30-30(0)
+    outFilename += "_NoCsT_NoNumbersT_CoefT_#topSelected:5-40(10)_";////#topPosW:30-30(0)
 
     ofstream out(outFilename.c_str());
 
@@ -211,13 +211,13 @@ void computeRSMethods(Index* ind)
     double start_thresh =startThresholdHM, end_thresh= endThresholdHM;
 
     for (double thresh = start_thresh ; thresh<=end_thresh ; thresh += intervalThresholdHM)
-        //for(double fbCoef = 0.05 ; fbCoef <=0.99 ; fbCoef+=0.1)//
+        for(double fbCoef = 0.05 ; fbCoef <=0.99 ; fbCoef+=0.1)//
             //for(double topPos = 10; topPos <= 90 ; topPos+=15)//
-        //for(double SelectedWord4Q = 5; SelectedWord4Q <= 40 ; SelectedWord4Q += 10)//
+        for(double SelectedWord4Q = 5; SelectedWord4Q <= 40 ; SelectedWord4Q += 10)//
         {
-                double SelectedWord4Q =15;
+                //double SelectedWord4Q =15;
                 double topPos = 30.0;
-                double fbCoef = 0.65;
+                //double fbCoef = 0.65;
 
                 //for(myMethod->alphaCoef = 0.1;myMethod->alphaCoef < 1; myMethod->alphaCoef+=0.2)
                 //{
@@ -226,24 +226,24 @@ void computeRSMethods(Index* ind)
                 //    for(myMethod->lambdaCoef = 0.1;myMethod->lambdaCoef < 1; myMethod->lambdaCoef +=0.2)
                 //    {
 
-                for(double c1 = 0.10 ; c1<=0.36 ;c1+=0.05)//inc//6
-                    //double c1 = 0.30;
+                //for(double c1 = 0.10 ; c1<=0.36 ;c1+=0.05)//inc//6
+                    double c1 = 0.30;
                 {
                     myMethod->setC1(c1);
-                    for(double c2 = 0.01 ; c2 <= 0.2 ; c2+=0.03)//dec //7
-                        //double c2 = 0.05;
+                    //for(double c2 = 0.01 ; c2 <= 0.2 ; c2+=0.03)//dec //7
+                        double c2 = 0.05;
                     {
-                        if(c2 > c1)
-                            break;
+                        //if(c2 > c1)
+                            //break;
                         //myMethod->setThreshold(init_thr);
                         myMethod->setC2(c2);
 
-                        for(int numOfShownNonRel = 4;numOfShownNonRel< 11;numOfShownNonRel+=3 )//3
-                        //int numOfShownNonRel = 5;
+                        //for(int numOfShownNonRel = 4;numOfShownNonRel< 11;numOfShownNonRel+=3 )//3
+                        int numOfShownNonRel = 5;
                         {
 
-                            for(int numOfnotShownDoc = 100 ;numOfnotShownDoc <= 501 ; numOfnotShownDoc+=100)//4
-                            //int numOfnotShownDoc = 500;
+                            //for(int numOfnotShownDoc = 100 ;numOfnotShownDoc <= 501 ; numOfnotShownDoc+=100)//4
+                            int numOfnotShownDoc = 500;
                             {
                                 myMethod->setThreshold(thresh);
                                 myMethod->setNumberOfPositiveSelectedTopWordAndFBcount(topPos);
@@ -253,7 +253,7 @@ void computeRSMethods(Index* ind)
 
                                 cout<<"c1: "<<c1<<" c2: "<<c2<<" numOfShownNonRel: "<<numOfShownNonRel<<" numOfnotShownDoc: "<<numOfnotShownDoc<<" "<<endl;
                                 resultPath = resultFileNameHM.c_str() +numToStr( myMethod->getThreshold() )+"_c1:"+numToStr(c1)+"_c2:"+numToStr(c2)+"_#showNonRel:"+numToStr(numOfShownNonRel)+"_#notShownDoc:"+numToStr(numOfnotShownDoc)+"#topPosW:"+numToStr(myMethod->numberOfPositiveSelectedTopWord)+"#topNegW:"+numToStr(myMethod->numberOfNegativeSelectedTopWord);
-                                resultPath += "fbCoef:"+numToStr(fbCoef)+methodName+"_CsTuning_NumberT"+"_topSelectedWord:"+numToStr(SelectedWord4Q)+".res";
+                                resultPath += "fbCoef:"+numToStr(fbCoef)+methodName+"_NoCsTuning_NoNumberT"+"_topSelectedWord:"+numToStr(SelectedWord4Q)+".res";
 
 
                                 //myMethod->setThreshold(thresh);
@@ -908,7 +908,10 @@ void computeQueryAvgVec(Document *d,RetMethod *myMethod )
         const std::map<int,vector<double> >::iterator it = wordEmbedding.find(qt->id());
 
         if(it != endIt)//found
-            queryTermsIdVec.push_back(make_pair<int , vector<double> > (qt->id() ,it->second ) );
+        {
+            for(int i=0; i < qt->weight() ; i++)
+                queryTermsIdVec.push_back(make_pair<int , vector<double> > (qt->id() ,it->second ) );
+        }
         else
         {
             delete qt;

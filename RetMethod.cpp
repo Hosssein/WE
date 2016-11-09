@@ -470,8 +470,11 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
     lemur::langmod::DocUnigramCounter *dCounter;
     dCounter = new lemur::langmod::DocUnigramCounter(relJudgDoc, ind);
 
+    //cerr<<queryTermsIdVec.size()<<" "<<ind.term("marchandis")<<" ";
     for(int ii = 0 ; ii < queryTermsIdVec.size() ; ii++)
     {
+        //cerr<< ind.term( queryTermsIdVec[ii].first ) <<" ";
+
         probWordVec.clear();
 
         dCounter->startIteration();
@@ -493,6 +496,7 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
                 //float sc = softMaxFunc2(Vq , tt);
 
                 //cerr<<"sc: "<<sc<<" "<<ind.term(eventInd)<<endl;
+
                 probWordVec.push_back(pair<double,int>( sc , eventInd));// can be select from Coll !!!!
             }
         }
@@ -517,11 +521,13 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
 
         //cerr<<"Query Term: "<<ind.term(queryTermsIdVec[ii].first)<<" , ";
         int cc = -1;
-        if(numberOfNegativeSelectedTopWord < probWordVec.size())
-            cc = numberOfNegativeSelectedTopWord;
+        if(numberOfTopSelectedWord4EacQword < probWordVec.size())
+            cc = numberOfTopSelectedWord4EacQword;
         else
             cc = probWordVec.size();
 
+        //cerr<<"N "<<numberOfTopSelectedWord4EacQword<<" Pr "<<probWordVec.size()<<" ";
+        //cerr<<selectedWordProbId.size()<<" \n";
         for(int i = 0 ; i < cc ; i++)
         {
             selectedWordProbId.push_back( probWordVec[i] );
@@ -532,6 +538,7 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
 
     }
 
+    //cerr<<selectedWordProbId.size()<<" ";
 
 
     COUNT_T numTerms = ind.termCountUnique();
