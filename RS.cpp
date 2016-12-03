@@ -211,13 +211,13 @@ void computeRSMethods(Index* ind)
     double start_thresh =startThresholdHM, end_thresh= endThresholdHM;
 
     for (double thresh = start_thresh ; thresh<=end_thresh ; thresh += intervalThresholdHM)
-        for(double fbCoef = 0.05 ; fbCoef <=0.99 ; fbCoef+=0.1)//
+        //for(double fbCoef = 0.05 ; fbCoef <=0.99 ; fbCoef+=0.1)//
             //for(double topPos = 10; topPos <= 90 ; topPos+=15)//
-        for(double SelectedWord4Q = 5; SelectedWord4Q <= 40 ; SelectedWord4Q += 10)//
+        //for(double SelectedWord4Q = 5; SelectedWord4Q <= 40 ; SelectedWord4Q += 10)//
         {
-                //double SelectedWord4Q =15;
+                double SelectedWord4Q =15;
                 double topPos = 30.0;
-                //double fbCoef = 0.65;
+                double fbCoef = 0.65;
 
                 //for(myMethod->alphaCoef = 0.1;myMethod->alphaCoef < 1; myMethod->alphaCoef+=0.2)
                 //{
@@ -939,7 +939,10 @@ void computeQueryAvgVec(Document *d,RetMethod *myMethod )
         const std::map<int,vector<double> >::iterator it = wordEmbedding.find(qt->id());
 
         if(it != endIt)//found
-            queryTerms.push_back(it->second);
+        {
+            for(int i = 0 ; i < qt->weight() ;i++)
+                queryTerms.push_back(it->second);
+        }
         else
         {
             delete qt;
@@ -947,6 +950,7 @@ void computeQueryAvgVec(Document *d,RetMethod *myMethod )
         }
         delete qt;
     }
+    cerr<<queryTerms.size()<<" ";
     vector<double> queryAvg( myMethod->W2VecDimSize ,0.0);
     for(int i = 0 ; i< queryTerms.size() ; i++)
     {

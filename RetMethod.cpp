@@ -461,112 +461,133 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
     updateTextQuery(origRep, *relDocs ,*relDocs);
 #endif
 #if 1
+    //log-logistic
+    vector<pair<double, int> >finalScoreIdVec;
+
+    map<int , double> idProbMap;
+    map<int , double >::iterator endMapIt = idProbMap.end();
 
     map<int, vector<double> >::iterator endIt = wordEmbedding.end();
 
+    //lemur::langmod::DocUnigramCounter *dCounter;
+    //dCounter = new lemur::langmod::DocUnigramCounter(relJudgDoc, ind);
+
+    float avgl = ind.docLengthAvg();
+    double N = ind.docCount();
 
     vector<pair<double, int> >selectedWordProbId;
-    vector<pair<double, int> >probWordVec;
-    lemur::langmod::DocUnigramCounter *dCounter;
-    dCounter = new lemur::langmod::DocUnigramCounter(relJudgDoc, ind);
 
-    //cerr<<queryTermsIdVec.size()<<" "<<ind.term("marchandis")<<" ";
+    ofstream write ("QueryWord-expanded-terms-2.txt", fstream::app);
     for(int ii = 0 ; ii < queryTermsIdVec.size() ; ii++)
     {
-        //cerr<< ind.term( queryTermsIdVec[ii].first ) <<" ";
-
-        probWordVec.clear();
-
-        dCounter->startIteration();
-        while(dCounter->hasMore())
+        double totalScore = 0.0 ;
+        finalScoreIdVec.clear();
+        for(int i = 0 ; i < relJudgDoc.size() ; i++)
         {
-            int eventInd;
-            double weight;
-            dCounter->nextCount(eventInd,weight);
+            idProbMap.clear();
 
-            map<int, vector<double> >::iterator tempit = wordEmbedding.find(eventInd);
-            if( tempit != endIt )
+            lemur::langmod::DocUnigramCounter *myDocCounter;
+            myDocCounter = new lemur::langmod::DocUnigramCounter(relJudgDoc[i], ind);
+
+            myDocCounter->startIteration();
+            while(myDocCounter->hasMore())
             {
-                vector<double> tt = tempit->second;
-                //vector<double> tt = wordEmbedding[eventInd];
+                int eventInd;
+                double weight;
+                myDocCounter->nextCount(eventInd,weight);
 
+                map<int, vector<double> >::iterator tempit = wordEmbedding.find(eventInd);
+                double sc=0;
+                bool flag = false;
+                if( tempit != endIt )
+                {
+                    vector<double> tt = tempit->second;
+                    sc = cosineSim(queryTermsIdVec[ii].second , tt);
+                    flag = true;
+                }
+                if(flag)
+                {
+                    double TF = weight;//myDocCounter->count(eventInd);
+                    //cerr<<eventInd <<" "<<weight<<" "<<TF<<endl;
 
-                double sc = cosineSim(queryTermsIdVec[ii].second , tt);
-                //float sc = softMaxFunc(Vq , tt);
-                //float sc = softMaxFunc2(Vq , tt);
+                    double docLength = ind.docLength( relJudgDoc[i] );
+                    double DF = ind.docCount(eventInd);//df
 
-                //cerr<<"sc: "<<sc<<" "<<ind.term(eventInd)<<endl;
+                    double lambda_w = DF/N;
+                    double tf_w = TF *log(1 + (avgl/docLength) ) ;
+                    double score_ = log(( tf_w + lambda_w )/lambda_w );
 
-                probWordVec.push_back(pair<double,int>( sc , eventInd));// can be select from Coll !!!!
+                    score_ *= exp(sc+1.0); // [-1:1]->[0:2]
+                    totalScore += score_;
+
+                    cerr<<score_;
+                    map<int , double >::iterator fit = idProbMap.find(eventInd);
+                    if(fit != endMapIt)
+                    {
+                        idProbMap[eventInd]+=score_;
+                    }else
+                    {
+                        idProbMap.insert(pair<int,double>(eventInd , score_));
+                    }
+                }
             }
-        }
 
-        double total_sc= 0.0;
-        for(int i = 0 ; i < probWordVec.size() ; i++)
+            delete myDocCounter;
+        }//end-for-reljudg
+
+        for(map<int , double>::iterator it = idProbMap.begin() ; it != idProbMap.end() ; ++it )
+            finalScoreIdVec.push_back( make_pair<double,int>(it->second/totalScore , it->first) );
+
+        std::sort(finalScoreIdVec.begin() , finalScoreIdVec.end() , pairCompare);// can use top n selecting algorithm O(n)
+
+
+        write<<ind.term(queryTermsIdVec[ii].first)<<"-> "<<endl;
+        for(int i = 0 ; i < numberOfTopSelectedWord4EacQword ; i++)
         {
-            int cc = dCounter->count(probWordVec[i].second );
-            double score_ = log(1+cc)* exp(probWordVec[i].first);
-            probWordVec[i].first =  score_ ;
-            total_sc += score_;
+           selectedWordProbId.push_back(pair<double,int>(finalScoreIdVec[i].second , finalScoreIdVec[i].first) );
+            write <<"( "<<ind.term(finalScoreIdVec[i].second) << " "<< finalScoreIdVec[i].first <<") , ";
         }
-        for(int i = 0 ; i < probWordVec.size() ; i++)
-            probWordVec[i].first /= total_sc;
 
-        std::sort(probWordVec.begin() , probWordVec.end() , pairCompare);// can use top n selecting algorithm O(n)
+        write<<endl<<endl;
 
-
-        //for(int i = 0 ; i < probWordVec.size() ; i++)
-        //    cerr<<probWordVec[i].first <<" ";
-        //cerr<<"\n";
-
-        //cerr<<"Query Term: "<<ind.term(queryTermsIdVec[ii].first)<<" , ";
-        int cc = -1;
-        if(numberOfTopSelectedWord4EacQword < probWordVec.size())
-            cc = numberOfTopSelectedWord4EacQword;
-        else
-            cc = probWordVec.size();
-
-        //cerr<<"N "<<numberOfTopSelectedWord4EacQword<<" Pr "<<probWordVec.size()<<" ";
-        //cerr<<selectedWordProbId.size()<<" \n";
-        for(int i = 0 ; i < cc ; i++)
-        {
-            selectedWordProbId.push_back( probWordVec[i] );
-            //cerr<<" "<<probWordVec[i].first<<" "<<ind.term(probWordVec[i].second)<<" ";
-            //cerr<<" "<<selectedWordProbId[i].first<<" "<<ind.term(selectedWordProbId[i].second)<<" ";
-        }
-        //cerr<<"\n";
-
-    }
-
-    //cerr<<selectedWordProbId.size()<<" ";
-
+    }//end-for-query
+    write.close();
 
     COUNT_T numTerms = ind.termCountUnique();
     lemur::utility::ArrayCounter<double> lmCounter(numTerms+1);
 
     int countPos = selectedWordProbId.size();
     for (int i = 0; i < countPos; i++)
-    {
-        //cerr<<probWordVec[i].second;
-        //cerr<<" "<<probWordVec[i].first<<" ";
         lmCounter.incCount(selectedWordProbId[i].second , selectedWordProbId[i].first);
-    }
 
     QueryModel *qr = dynamic_cast<QueryModel *> (&origRep);
     lemur::langmod::MLUnigramLM *fblm = new lemur::langmod::MLUnigramLM(lmCounter, ind.termLexiconID());
     qr->interpolateWith(*fblm, (1-qryParam.fbCoeff), qryParam.fbTermCount, qryParam.fbPrSumTh, qryParam.fbPrTh);
 
-    delete dCounter;
+    //delete dCounter;
     delete fblm;
     //delete qr;
+
 #endif
+
 #if 0
 
-    map<int, vector<double> >::iterator endIt = wordEmbedding.end();
+map<int, vector<double> >::iterator endIt = wordEmbedding.end();
 
-    vector<pair<double, int> >probWordVec;
-    lemur::langmod::DocUnigramCounter *dCounter;
-    dCounter = new lemur::langmod::DocUnigramCounter(relJudgDoc, ind);
+
+vector<pair<double, int> >selectedWordProbId;
+vector<pair<double, int> >probWordVec;
+lemur::langmod::DocUnigramCounter *dCounter;
+dCounter = new lemur::langmod::DocUnigramCounter(relJudgDoc, ind);
+
+ofstream write ("QueryWord-expanded-terms.txt", fstream::app);
+
+//cerr<<queryTermsIdVec.size()<<" "<<ind.term("marchandis")<<" ";
+for(int ii = 0 ; ii < queryTermsIdVec.size() ; ii++)
+{
+    //cerr<< ind.term( queryTermsIdVec[ii].first ) <<" ";
+
+    probWordVec.clear();
 
     dCounter->startIteration();
     while(dCounter->hasMore())
@@ -581,74 +602,183 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
             vector<double> tt = tempit->second;
             //vector<double> tt = wordEmbedding[eventInd];
 
-            float sc = cosineSim(Vq , tt);
+
+            double sc = cosineSim(queryTermsIdVec[ii].second , tt);
             //float sc = softMaxFunc(Vq , tt);
             //float sc = softMaxFunc2(Vq , tt);
 
-            probWordVec.push_back(pair<double,int>(sc,eventInd));
+            //cerr<<"sc: "<<sc<<" "<<ind.term(eventInd)<<endl;
 
+            probWordVec.push_back(pair<double,int>( sc , eventInd));// can be select from Coll !!!!
         }
     }
-    double total_sc= 0;
+
+    double total_sc= 0.0;
+
+    cerr<<"\nQUERY_TERM: "<<ind.term(queryTermsIdVec[ii].first)<<endl;
     for(int i = 0 ; i < probWordVec.size() ; i++)
     {
+
+
         int cc = dCounter->count(probWordVec[i].second );
-        double score_ = log(1+cc)* exp(probWordVec[i].first);
+        double score_ = log(1+cc)* exp(2.0*probWordVec[i].first);
+        score_+=1.0; //[-1:1]-->[0:2]
+        /*if(ind.term(probWordVec[i].second) == ind.term(queryTermsIdVec[ii].first) )
+                cerr<<ind.term(queryTermsIdVec[ii].first)<<" "<<cc<<" "<<probWordVec[i].first<<" "<<score_<<endl;
+            if(ind.term(probWordVec[i].second) == "of" )
+                cerr<<"of: "<<cc<<" "<<probWordVec[i].first<<" "<<score_<<endl;
+            else if(ind.term(probWordVec[i].second) == "dope" )
+                cerr<<"dope: "<<cc<<" "<<probWordVec[i].first<<" "<<score_<<endl;*/
+
+
+
         probWordVec[i].first =  score_ ;
         total_sc += score_;
     }
     for(int i = 0 ; i < probWordVec.size() ; i++)
+    {
         probWordVec[i].first /= total_sc;
 
+        if(ind.term(probWordVec[i].second) == ind.term(queryTermsIdVec[ii].first) )
+            cerr<<ind.term(queryTermsIdVec[ii].first)<<" weight: "<<probWordVec[i].first<<endl;
+        if(ind.term(probWordVec[i].second) == "dope" )
+            cerr<<"dope weight: "<<probWordVec[i].first<<endl;
+        else if(ind.term(probWordVec[i].second) == "of" )
+            cerr<<"of weight: "<<probWordVec[i].first<<endl;
+    }
+    std::sort(probWordVec.begin() , probWordVec.end() , pairCompare);// can use top n selecting algorithm O(n)
 
-    std::sort(probWordVec.begin() , probWordVec.end() , pairCompare);
+
+    int cc = -1;
+    if(numberOfTopSelectedWord4EacQword < probWordVec.size())
+        cc = numberOfTopSelectedWord4EacQword;
+    else
+        cc = probWordVec.size();
+
+    write<<ind.term(queryTermsIdVec[ii].first)<<"-> "<<endl;
+    for(int i = 0 ; i < cc ; i++)
+    {
+        selectedWordProbId.push_back( probWordVec[i] );
+
+        write <<"( "<<ind.term(probWordVec[i].second) << " "<< probWordVec[i].first <<") , ";
+    }
+
+    write<<endl<<endl;
+}//end-for
+write.close();
 
 
-    /*for(int i = 0 ; i < numberOfPositiveSelectedTopWord ;i ++)
+COUNT_T numTerms = ind.termCountUnique();
+lemur::utility::ArrayCounter<double> lmCounter(numTerms+1);
+
+int countPos = selectedWordProbId.size();
+for (int i = 0; i < countPos; i++)
+{
+    //cerr<<probWordVec[i].second;
+    //cerr<<" "<<probWordVec[i].first<<" ";
+    lmCounter.incCount(selectedWordProbId[i].second , selectedWordProbId[i].first);
+}
+
+QueryModel *qr = dynamic_cast<QueryModel *> (&origRep);
+lemur::langmod::MLUnigramLM *fblm = new lemur::langmod::MLUnigramLM(lmCounter, ind.termLexiconID());
+qr->interpolateWith(*fblm, (1-qryParam.fbCoeff), qryParam.fbTermCount, qryParam.fbPrSumTh, qryParam.fbPrTh);
+
+
+
+
+delete dCounter;
+delete fblm;
+//delete qr;
+#endif
+#if 0
+
+map<int, vector<double> >::iterator endIt = wordEmbedding.end();
+
+vector<pair<double, int> >probWordVec;
+lemur::langmod::DocUnigramCounter *dCounter;
+dCounter = new lemur::langmod::DocUnigramCounter(relJudgDoc, ind);
+
+dCounter->startIteration();
+while(dCounter->hasMore())
+{
+    int eventInd;
+    double weight;
+    dCounter->nextCount(eventInd,weight);
+
+    map<int, vector<double> >::iterator tempit = wordEmbedding.find(eventInd);
+    if( tempit != endIt )
+    {
+        vector<double> tt = tempit->second;
+        //vector<double> tt = wordEmbedding[eventInd];
+
+        float sc = cosineSim(Vq , tt);
+        //float sc = softMaxFunc(Vq , tt);
+        //float sc = softMaxFunc2(Vq , tt);
+
+        probWordVec.push_back(pair<double,int>(sc,eventInd));
+
+    }
+}
+double total_sc= 0;
+for(int i = 0 ; i < probWordVec.size() ; i++)
+{
+    int cc = dCounter->count(probWordVec[i].second );
+    double score_ = log(1+cc)* exp(probWordVec[i].first);
+    probWordVec[i].first =  score_ ;
+    total_sc += score_;
+}
+for(int i = 0 ; i < probWordVec.size() ; i++)
+probWordVec[i].first /= total_sc;
+
+
+std::sort(probWordVec.begin() , probWordVec.end() , pairCompare);
+
+
+/*for(int i = 0 ; i < numberOfPositiveSelectedTopWord ;i ++)
         cerr << ind.term(probWordVec[i].second) <<" ";
     cerr<<endl;*/
 
 
-    COUNT_T numTerms = ind.termCountUnique();
-    lemur::utility::ArrayCounter<double> lmCounter(numTerms+1);
+COUNT_T numTerms = ind.termCountUnique();
+lemur::utility::ArrayCounter<double> lmCounter(numTerms+1);
 
-    //int countPos = min((int)numberOfPositiveSelectedTopWord , (int)probWordVec.size());
-    int countPos = -1;
-    if(numberOfPositiveSelectedTopWord < probWordVec.size() )
-        countPos = numberOfPositiveSelectedTopWord;
-    else
-        countPos = probWordVec.size();
+//int countPos = min((int)numberOfPositiveSelectedTopWord , (int)probWordVec.size());
+int countPos = -1;
+if(numberOfPositiveSelectedTopWord < probWordVec.size() )
+countPos = numberOfPositiveSelectedTopWord;
+else
+countPos = probWordVec.size();
 
-    for (int i = 0; i < countPos; i++)
-    {
-        //cerr<<probWordVec[i].second;
-        //cerr<<" "<<probWordVec[i].first<<" ";
-        lmCounter.incCount(probWordVec[i].second , probWordVec[i].first);
-    }
+for (int i = 0; i < countPos; i++)
+{
+    //cerr<<probWordVec[i].second;
+    //cerr<<" "<<probWordVec[i].first<<" ";
+    lmCounter.incCount(probWordVec[i].second , probWordVec[i].first);
+}
 
-    QueryModel *qr = dynamic_cast<QueryModel *> (&origRep);
-    lemur::langmod::MLUnigramLM *fblm = new lemur::langmod::MLUnigramLM(lmCounter, ind.termLexiconID());
-    qr->interpolateWith(*fblm, (1-qryParam.fbCoeff), qryParam.fbTermCount, qryParam.fbPrSumTh, qryParam.fbPrTh);
+QueryModel *qr = dynamic_cast<QueryModel *> (&origRep);
+lemur::langmod::MLUnigramLM *fblm = new lemur::langmod::MLUnigramLM(lmCounter, ind.termLexiconID());
+qr->interpolateWith(*fblm, (1-qryParam.fbCoeff), qryParam.fbTermCount, qryParam.fbPrSumTh, qryParam.fbPrTh);
 
-    delete dCounter;
-    delete fblm;
-    //delete qr;
+delete dCounter;
+delete fblm;
+//delete qr;
 #endif
 #if 0
-    cerr<<"relJudgDoc size: "<<relJudgDoc.size()<<" nonRelJudgDoc size: "<<nonRelJudgDoc.size()<<endl;
-    if(relComputed[relJudgDoc.size()] == false)
-    {
-        relComputed[relJudgDoc.size()] = true;
-        relJudgDoc.insert(relJudgDoc.end(),initRel.begin(),initRel.end());
-        cerr<<"After1: relJudgDoc size: "<<relJudgDoc.size()<<" nonRelJudgDoc size: "<<nonRelJudgDoc.size()<<endl;
-        computeRelNonRelDist(origRep,relJudgDoc ,nonRelJudgDoc,true,true);
-    }else if(nonRelComputed[nonRelJudgDoc.size()] == false)
-    {
-        nonRelComputed[nonRelJudgDoc.size()] = true;
-        nonRelJudgDoc.insert(nonRelJudgDoc.end(), initNonRel.begin(),initNonRel.end());
-        cerr<<"After2: relJudgDoc size: "<<relJudgDoc.size()<<" nonRelJudgDoc size: "<<nonRelJudgDoc.size()<<endl;
-        computeRelNonRelDist(origRep,relJudgDoc ,nonRelJudgDoc,false,true);
-    }
+cerr<<"relJudgDoc size: "<<relJudgDoc.size()<<" nonRelJudgDoc size: "<<nonRelJudgDoc.size()<<endl;
+if(relComputed[relJudgDoc.size()] == false)
+{
+    relComputed[relJudgDoc.size()] = true;
+    relJudgDoc.insert(relJudgDoc.end(),initRel.begin(),initRel.end());
+    cerr<<"After1: relJudgDoc size: "<<relJudgDoc.size()<<" nonRelJudgDoc size: "<<nonRelJudgDoc.size()<<endl;
+    computeRelNonRelDist(origRep,relJudgDoc ,nonRelJudgDoc,true,true);
+}else if(nonRelComputed[nonRelJudgDoc.size()] == false)
+{
+    nonRelComputed[nonRelJudgDoc.size()] = true;
+    nonRelJudgDoc.insert(nonRelJudgDoc.end(), initNonRel.begin(),initNonRel.end());
+    cerr<<"After2: relJudgDoc size: "<<relJudgDoc.size()<<" nonRelJudgDoc size: "<<nonRelJudgDoc.size()<<endl;
+    computeRelNonRelDist(origRep,relJudgDoc ,nonRelJudgDoc,false,true);
+}
 #endif
 }
 
