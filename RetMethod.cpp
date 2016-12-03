@@ -469,23 +469,20 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
 
     map<int, vector<double> >::iterator endIt = wordEmbedding.end();
 
-    //lemur::langmod::DocUnigramCounter *dCounter;
-    //dCounter = new lemur::langmod::DocUnigramCounter(relJudgDoc, ind);
-
-    float avgl = ind.docLengthAvg();
-    double N = ind.docCount();
+    const double avgl = ind.docLengthAvg();
+    const double N = ind.docCount();
 
     vector<pair<double, int> >selectedWordProbId;
 
-    ofstream write ("QueryWord-expanded-terms-2.txt", fstream::app);
+    //ofstream write ("QueryWord-expanded-terms-2.txt", fstream::app);
     for(int ii = 0 ; ii < queryTermsIdVec.size() ; ii++)
     {
         double totalScore = 0.0 ;
         finalScoreIdVec.clear();
+        idProbMap.clear();
+
         for(int i = 0 ; i < relJudgDoc.size() ; i++)
         {
-            idProbMap.clear();
-
             lemur::langmod::DocUnigramCounter *myDocCounter;
             myDocCounter = new lemur::langmod::DocUnigramCounter(relJudgDoc[i], ind);
 
@@ -497,19 +494,12 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
                 myDocCounter->nextCount(eventInd,weight);
 
                 map<int, vector<double> >::iterator tempit = wordEmbedding.find(eventInd);
-                double sc=0;
-                bool flag = false;
                 if( tempit != endIt )
                 {
                     vector<double> tt = tempit->second;
-                    sc = cosineSim(queryTermsIdVec[ii].second , tt);
-                    flag = true;
-                }
-                if(flag)
-                {
-                    double TF = weight;//myDocCounter->count(eventInd);
-                    //cerr<<eventInd <<" "<<weight<<" "<<TF<<endl;
+                    double sc = cosineSim(queryTermsIdVec[ii].second , tt);
 
+                    double TF = weight;
                     double docLength = ind.docLength( relJudgDoc[i] );
                     double DF = ind.docCount(eventInd);//df
 
@@ -520,15 +510,13 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
                     score_ *= exp(sc+1.0); // [-1:1]->[0:2]
                     totalScore += score_;
 
-                    cerr<<score_;
                     map<int , double >::iterator fit = idProbMap.find(eventInd);
                     if(fit != endMapIt)
-                    {
                         idProbMap[eventInd]+=score_;
-                    }else
-                    {
+                    else
                         idProbMap.insert(pair<int,double>(eventInd , score_));
-                    }
+
+                    //cerr<<TF<<" "<<docLength<<" "<<DF<<" "<<lambda_w<<" "<<tf_w<<" "<<score_<<endl;
                 }
             }
 
@@ -541,17 +529,20 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
         std::sort(finalScoreIdVec.begin() , finalScoreIdVec.end() , pairCompare);// can use top n selecting algorithm O(n)
 
 
-        write<<ind.term(queryTermsIdVec[ii].first)<<"-> "<<endl;
-        for(int i = 0 ; i < numberOfTopSelectedWord4EacQword ; i++)
+        //write<<ind.term(queryTermsIdVec[ii].first)<<"-> "<<endl;
+
+        int cc = numberOfTopSelectedWord4EacQword;
+        //int cc = finalScoreIdVec.size();
+        for(int i = 0 ; i < cc ; i++)
         {
            selectedWordProbId.push_back(pair<double,int>(finalScoreIdVec[i].second , finalScoreIdVec[i].first) );
-            write <<"( "<<ind.term(finalScoreIdVec[i].second) << " "<< finalScoreIdVec[i].first <<") , ";
+           //write <<"( "<<ind.term(finalScoreIdVec[i].second) << " "<< finalScoreIdVec[i].first <<") , ";
         }
 
-        write<<endl<<endl;
+        //write<<endl<<endl;
 
     }//end-for-query
-    write.close();
+    //write.close();
 
     COUNT_T numTerms = ind.termCountUnique();
     lemur::utility::ArrayCounter<double> lmCounter(numTerms+1);
