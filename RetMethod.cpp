@@ -494,7 +494,7 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
                 myDocCounter->nextCount(eventInd,weight);
 
                 map<int, vector<double> >::iterator tempit = wordEmbedding.find(eventInd);
-                if( tempit != endIt )
+                if( tempit != endIt )//found!
                 {
                     vector<double> tt = tempit->second;
                     double sc = cosineSim(queryTermsIdVec[ii].second , tt);
@@ -504,7 +504,7 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
                     double DF = ind.docCount(eventInd);//df
 
                     double lambda_w = DF/N;
-                    double tf_w = TF *log(1 + (avgl/docLength) ) ;
+                    double tf_w = TF * log(1 + ((avgl)/docLength) ) ;
                     double score_ = log(( tf_w + lambda_w )/lambda_w );
 
                     score_ *= exp(sc+1.0); // [-1:1]->[0:2]
@@ -512,7 +512,11 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
 
                     map<int , double >::iterator fit = idProbMap.find(eventInd);
                     if(fit != endMapIt)
-                        idProbMap[eventInd]+=score_;
+                    {
+                        //cerr<<"before: "<<idProbMap[eventInd];
+                        idProbMap[eventInd] += score_;
+                        //cerr<<" after: "<<idProbMap[eventInd]<<endl;
+                    }
                     else
                         idProbMap.insert(pair<int,double>(eventInd , score_));
 
@@ -529,17 +533,25 @@ void lemur::retrieval::RetMethod::updateProfile(lemur::api::TextQueryRep &origRe
         std::sort(finalScoreIdVec.begin() , finalScoreIdVec.end() , pairCompare);// can use top n selecting algorithm O(n)
 
 
-        //write<<ind.term(queryTermsIdVec[ii].first)<<"-> "<<endl;
+       //write<<ind.term(queryTermsIdVec[ii].first)<<"-> "<<endl;
 
-        int cc = numberOfTopSelectedWord4EacQword;
+
+        int cc=-1;
+        if( numberOfTopSelectedWord4EacQword < finalScoreIdVec.size())
+            cc = numberOfTopSelectedWord4EacQword ;
+        else
+            cc = finalScoreIdVec.size();
+
         //int cc = finalScoreIdVec.size();
         for(int i = 0 ; i < cc ; i++)
         {
-           selectedWordProbId.push_back(pair<double,int>(finalScoreIdVec[i].second , finalScoreIdVec[i].first) );
+           selectedWordProbId.push_back(make_pair<double,int>(finalScoreIdVec[i].first , finalScoreIdVec[i].second) );
            //write <<"( "<<ind.term(finalScoreIdVec[i].second) << " "<< finalScoreIdVec[i].first <<") , ";
+           //cerr<<"( "<<ind.term(finalScoreIdVec[i].second) << " "<< finalScoreIdVec[i].first <<") , ";
         }
 
         //write<<endl<<endl;
+        //cerr<<totalScore<<" ";
 
     }//end-for-query
     //write.close();
@@ -606,7 +618,7 @@ for(int ii = 0 ; ii < queryTermsIdVec.size() ; ii++)
 
     double total_sc= 0.0;
 
-    cerr<<"\nQUERY_TERM: "<<ind.term(queryTermsIdVec[ii].first)<<endl;
+    //cerr<<"\nQUERY_TERM: "<<ind.term(queryTermsIdVec[ii].first)<<endl;
     for(int i = 0 ; i < probWordVec.size() ; i++)
     {
 
@@ -630,12 +642,13 @@ for(int ii = 0 ; ii < queryTermsIdVec.size() ; ii++)
     {
         probWordVec[i].first /= total_sc;
 
-        if(ind.term(probWordVec[i].second) == ind.term(queryTermsIdVec[ii].first) )
+        /*if(ind.term(probWordVec[i].second) == ind.term(queryTermsIdVec[ii].first) )
             cerr<<ind.term(queryTermsIdVec[ii].first)<<" weight: "<<probWordVec[i].first<<endl;
         if(ind.term(probWordVec[i].second) == "dope" )
             cerr<<"dope weight: "<<probWordVec[i].first<<endl;
         else if(ind.term(probWordVec[i].second) == "of" )
             cerr<<"of weight: "<<probWordVec[i].first<<endl;
+            */
     }
     std::sort(probWordVec.begin() , probWordVec.end() , pairCompare);// can use top n selecting algorithm O(n)
 

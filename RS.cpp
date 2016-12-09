@@ -199,7 +199,7 @@ void computeRSMethods(Index* ind)
     string methodName = "_W2V_TopSelectedQ_Stemmed_NoSW_";
 
     outFilename += methodName;
-    outFilename += "_NoC2sT_NoNumbers2T_CoefT_#topSelected:5-40(10)_";////#topPosW:30-30(0)
+    outFilename += "_NoCsT_NoNumbersT_CoefT_#topSelected:5-40(10)_";////#topPosW:30-30(0)
 
     ofstream out(outFilename.c_str());
 
@@ -213,18 +213,18 @@ void computeRSMethods(Index* ind)
     for (double thresh = start_thresh ; thresh<=end_thresh ; thresh += intervalThresholdHM)
         for(double fbCoef = 0.05 ; fbCoef <=0.99 ; fbCoef+=0.1)//
             //for(double topPos = 10; topPos <= 90 ; topPos+=15)//
-        for(double SelectedWord4Q = 5; SelectedWord4Q <= 40 ; SelectedWord4Q += 10)//
+        for(double SelectedWord4Q = 5; SelectedWord4Q <= 40 ; SelectedWord4Q += 10)//4
         {
-                //double SelectedWord4Q =15;
+                //double SelectedWord4Q =45;
                 double topPos = 30.0;
-                //double fbCoef = 0.65;
+                //double fbCoef = 0.2;
 
                 //for(double c1 = 0.10 ; c1<=0.36 ;c1+=0.05)//inc//6
                     double c1 = 0.30;
                 {
                     myMethod->setC1(c1);
-                    for(double c2 = 0.01 ; c2 <= 0.2 ; c2+=0.03)//dec //7
-                        //double c2 = 0.05;
+                    //for(double c2 = 0.01 ; c2 <= 0.2 ; c2+=0.03)//dec //7
+                        double c2 = 0.05;
                     {
                         //if(c2 > c1)
                             //break;
@@ -235,8 +235,8 @@ void computeRSMethods(Index* ind)
                         int numOfShownNonRel = 5;
                         {
 
-                            for(int numOfnotShownDoc = 100 ;numOfnotShownDoc <= 501 ; numOfnotShownDoc+=100)//4
-                            //int numOfnotShownDoc = 500;
+                            //for(int numOfnotShownDoc = 100 ;numOfnotShownDoc <= 501 ; numOfnotShownDoc+=100)//4
+                            int numOfnotShownDoc = 500;
                             {
                                 myMethod->setThreshold(thresh);
                                 myMethod->setNumberOfPositiveSelectedTopWordAndFBcount(topPos);
